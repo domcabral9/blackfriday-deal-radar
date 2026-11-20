@@ -1,0 +1,24 @@
+# Segredos e configuracao local
+.env
+.env.*
+!.env.example
+
+# Sessao do Telethon: da acesso total a conta do Telegram, nunca versionar
+*.session
+*.session-journal
+sessions/
+
+# Dados capturados em runtime (mensagens brutas dos canais)
+data/
+*.jsonl
+
+# Notas locais
+prompt.txt
+.claude/style-check-local.json
+.claude/settings.local.json
+
+# Python / Node
+__pycache__/
+*.pyc
+.venv/
+node_modules/
