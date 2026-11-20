@@ -118,7 +118,27 @@ do aviso "Radar online" depois de ligar o PC é o sinal.
 
 ## Como mudar regras
 
-### Cadastrar ou ajustar um produto
+### Pelo bot (dia a dia)
+
+| Comando | Exemplo |
+|---|---|
+| `/produtos` | lista com status e teto |
+| `/pausar <id>`, `/ativar <id>` | `/pausar iphone-16e` depois de comprar |
+| `/teto <id> <valor>` | `/teto tv-lg-qned 4500` |
+| `/add <termos> [-excluir] [teto=N] [min=N]` | `/add galaxy s25 fe -ultra teto=2500` |
+| `/remover <id>` | só produtos criados por `/add` |
+| `/status` | último post recebido e produtos ativos |
+
+O bot do Telegram é encontrável por qualquer pessoa, então o listener só repassa comandos cujo
+remetente é o `TELEGRAM_CHAT_ID`. Os demais são ignorados sem resposta. Os alertas também só vão
+para esse chat.
+
+Os comandos recebidos pelo bot chegam pelo listener (MTProto, sessão própria em
+`/sessions/bot.session`), porque o gatilho de Telegram do n8n exige uma URL pública HTTPS. As
+alterações ficam no *static data* do workflow, por cima da lista de `catalog.js`. O
+`deploy-workflow.sh` preserva esse estado ao publicar uma versão nova.
+
+### No código (regras novas ou mudanças estruturais)
 
 Editar [`n8n/code/catalog.js`](../n8n/code/catalog.js), acrescentar um caso em
 [`n8n/tests/fixtures.json`](../n8n/tests/fixtures.json) e rodar:

@@ -96,10 +96,42 @@ async def main() -> None:
     await client.start()
     log.info("escutando %d canais", len(config.CHANNEL_IDS))
     beat_task = asyncio.create_task(heartbeat_loop(client, http))
-    # Se a sessao cair de vez, run_until_disconnected retorna, o processo sai
-    # e o restart do compose sobe outro; o heartbeat para e o n8n percebe.
-    await client.run_until_disconnected()
+
+    waiters = [asyncio.create_task(client.run_until_disconnected())]
+    bot = await start_bot(http)
+    if bot:
+        waiters.append(asyncio.create_task(bot.run_until_disconnected()))
+
+    # Se qualquer sessao cair de vez, o processo sai e o restart do compose
+    # sobe outro; o heartbeat para no meio tempo e o n8n percebe.
+    await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
     beat_task.cancel()
+
+
+async def start_bot(http: httpx.AsyncClient):
+    if not (config.BOT_TOKEN and config.OWNER_ID):
+        log.info("bot de comandos desativado (sem TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID)")
+        return None
+
+    bot = TelegramClient(config.BOT_SESSION_PATH, config.API_ID, config.API_HASH)
+
+    @bot.on(events.NewMessage(incoming=True, pattern=r"^/"))
+    async def on_command(event):
+        # Bot e publico por natureza: qualquer um pode achar e mandar mensagem.
+        # Quem nao e o dono e ignorado em silencio.
+        if event.sender_id != config.OWNER_ID:
+            log.info("comando ignorado de remetente desconhecido %s", event.sender_id)
+            return
+        body = {"chat_id": event.chat_id, "text": event.raw_text, "listener": STATE}
+        try:
+            await http.post(config.COMMAND_URL, json=body, headers={"X-Radar-Token": config.WEBHOOK_TOKEN})
+        except httpx.HTTPError as exc:
+            log.warning("comando nao chegou ao n8n: %s", exc)
+            await event.reply("O n8n não respondeu. Tente de novo em instantes.")
+
+    await bot.start(bot_token=config.BOT_TOKEN)
+    log.info("bot de comandos ativo")
+    return bot
 
 
 if __name__ == "__main__":

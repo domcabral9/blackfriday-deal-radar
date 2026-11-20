@@ -34,6 +34,20 @@ for f in workflows/*.json; do
   WF_ID=$(grep -m1 '"id": "dealRadar' "$f" | sed 's/.*"id": "\([^"]*\)".*/\1/')
   sed -e "s/<TELEGRAM_CHAT_ID>/$CHAT_ID/" -e "s/<TELEGRAM_CRED_ID>/$CRED_ID/" -e "s|<TELEGRAM_CRED_NAME>|$CRED_NAME|" "$f" > /tmp/wf.json
   docker cp /tmp/wf.json deal-radar-n8n:/tmp/wf.json && rm /tmp/wf.json
+  # Preserva o static data da versao em producao (dedup, ajustes do bot,
+  # estado do healthcheck). O JSON novo nao tem esse campo e o import o zeraria.
+  docker exec deal-radar-n8n sh -c "n8n export:workflow --id=$WF_ID --output=/tmp/old.json >/dev/null 2>&1 || true"
+  docker exec deal-radar-n8n node -e '
+    const fs = require("fs");
+    const wf = JSON.parse(fs.readFileSync("/tmp/wf.json", "utf8"));
+    let kept = "nenhum";
+    try {
+      const old = [].concat(JSON.parse(fs.readFileSync("/tmp/old.json", "utf8")))[0];
+      if (old && old.staticData) { wf.staticData = old.staticData; kept = Object.keys(old.staticData.global || {}).join(",") || "vazio"; }
+    } catch (e) {}
+    fs.writeFileSync("/tmp/wf.json", JSON.stringify(wf));
+    console.log("static data preservado: " + kept);'
+  docker exec deal-radar-n8n rm -f /tmp/old.json
   docker exec deal-radar-n8n sh -c "n8n import:workflow --input=/tmp/wf.json && n8n publish:workflow --id=$WF_ID; rm /tmp/wf.json" 2>&1 | grep -vE 'Error tracking|deprecated|Note:|Please restart'
 done
 docker restart deal-radar-n8n > /dev/null

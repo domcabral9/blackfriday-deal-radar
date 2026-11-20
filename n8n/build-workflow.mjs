@@ -30,8 +30,8 @@ const nodes = [
     options: {},
   }, { webhookId: 'deal-radar-ingest', credentials: { httpHeaderAuth: CRED_WEBHOOK } }),
   node('Catálogo de produtos', 'n8n-nodes-base.code', 2, 220, { jsCode: code('catalog.js') }),
-  node('Analisar oferta', 'n8n-nodes-base.code', 2, 440, { jsCode: code('analyze-offer.js') }),
-  node('É alerta?', 'n8n-nodes-base.if', 2, 660, {
+  node('Analisar oferta', 'n8n-nodes-base.code', 2, 660, { jsCode: code('analyze-offer.js') }),
+  node('É alerta?', 'n8n-nodes-base.if', 2, 880, {
     conditions: {
       options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
       conditions: [{
@@ -44,9 +44,9 @@ const nodes = [
     },
     options: {},
   }),
-  node('Deduplicar', 'n8n-nodes-base.code', 2, 880, { jsCode: code('dedup.js') }),
-  node('Formatar alerta', 'n8n-nodes-base.code', 2, 1100, { jsCode: code('format-message.js') }),
-  node('Enviar no Telegram', 'n8n-nodes-base.telegram', 1.2, 1320, {
+  node('Deduplicar', 'n8n-nodes-base.code', 2, 1100, { jsCode: code('dedup.js') }),
+  node('Formatar alerta', 'n8n-nodes-base.code', 2, 1320, { jsCode: code('format-message.js') }),
+  node('Enviar no Telegram', 'n8n-nodes-base.telegram', 1.2, 1540, {
     chatId: '<TELEGRAM_CHAT_ID>',
     text: '={{ $json.text }}',
     replyMarkup: 'inlineKeyboard',
@@ -64,11 +64,50 @@ const nodes = [
   }, { credentials: { telegramApi: CRED_TELEGRAM } }),
 ];
 
-const chain = ['Webhook', 'Catálogo de produtos', 'Analisar oferta', 'É alerta?', 'Deduplicar', 'Formatar alerta', 'Enviar no Telegram'];
-const connections = {};
-chain.slice(0, -1).forEach((from, i) => {
-  connections[from] = { main: [[{ node: chain[i + 1], type: 'main', index: 0 }]] };
-});
+// Comandos do bot: segundo gatilho que passa pelo mesmo catálogo
+const place = (n, x, y) => ({ ...n, position: [x, y] });
+nodes.push(
+  place(node('Comando do bot', 'n8n-nodes-base.webhook', 2, 0, {
+    httpMethod: 'POST',
+    path: 'deal-radar/command',
+    authentication: 'headerAuth',
+    options: {},
+  }, { webhookId: 'deal-radar-command', credentials: { httpHeaderAuth: CRED_WEBHOOK } }), 0, 520),
+  place(node('É comando?', 'n8n-nodes-base.if', 2, 0, {
+    conditions: {
+      options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+      conditions: [{
+        id: 'veio-do-bot',
+        leftValue: "={{ $('Comando do bot').isExecuted }}",
+        rightValue: '',
+        operator: { type: 'boolean', operation: 'true', singleValue: true },
+      }],
+      combinator: 'and',
+    },
+    options: {},
+  }), 440, 400),
+  place(node('Processar comando', 'n8n-nodes-base.code', 2, 0, { jsCode: code('commands.js') }), 660, 520),
+  place(node('Responder comando', 'n8n-nodes-base.telegram', 1.2, 0, {
+    chatId: '<TELEGRAM_CHAT_ID>',
+    text: '={{ $json.text }}',
+    additionalFields: { appendAttribution: false, parse_mode: 'HTML', disable_web_page_preview: true },
+  }, { credentials: { telegramApi: CRED_TELEGRAM } }), 880, 520),
+);
+nodes[0] = place(nodes[0], 0, 300);
+nodes[1] = place(nodes[1], 220, 400);
+
+const to = (...targets) => ({ main: targets.map((t) => (t ? [{ node: t, type: 'main', index: 0 }] : [])) });
+const connections = {
+  'Webhook': to('Catálogo de produtos'),
+  'Comando do bot': to('Catálogo de produtos'),
+  'Catálogo de produtos': to('É comando?'),
+  'É comando?': to('Processar comando', 'Analisar oferta'), // saída 0 = verdadeiro
+  'Processar comando': to('Responder comando'),
+  'Analisar oferta': to('É alerta?'),
+  'É alerta?': to('Deduplicar'),
+  'Deduplicar': to('Formatar alerta'),
+  'Formatar alerta': to('Enviar no Telegram'),
+};
 
 const workflow = {
   id: 'dealRadarMain001',

@@ -137,6 +137,7 @@ function buildMatcher(product) {
     // Não precedido de letra: aceita modelo colado no tamanho ("55mrgb85")
     model: new RegExp(`(?<![a-z])(?:${product.model})${lookahead}`),
     requireAll: (product.requireAll || []).map((r) => new RegExp(r)),
+    excludeAny: (product.excludeAny || []).map((r) => new RegExp(r)),
     size: product.size ? new RegExp(`\\b${product.size}(?!\\d)`) : null,
   };
 }
@@ -149,6 +150,7 @@ function matchProducts(post, catalog) {
     const m = buildMatcher(p);
     if (!m.model.test(norm)) return false;
     if (!m.requireAll.every((r) => r.test(norm))) return false;
+    if (m.excludeAny.some((r) => r.test(norm))) return false;
     if (m.size && !m.size.test(norm)) return false;
     return true;
   });

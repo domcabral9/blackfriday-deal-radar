@@ -114,7 +114,37 @@ if (corpusPath === '--preview') {
     console.log(`${ok ? 'ok     ' : 'FALHOU '} saúde: ${name}`);
   }
 
-  const total = cases.length + dedupChecks.length + healthChecks.length;
+  // Comandos do bot: comando -> catálogo recalculado -> post analisado
+  const { handleCommand } = load('commands.js');
+  const botStore = {};
+  const catalogSrc = readFileSync(join(codeDir, 'catalog.js'), 'utf8');
+  const currentCatalog = () => new Function('$getWorkflowStaticData', catalogSrc)(() => botStore)[0].json.catalog;
+  const cmd = (text) => handleCommand(text, botStore, { catalog: currentCatalog(), listener: { started_at: '2026-11-27T12:00:00Z', last_message_at: new Date().toISOString(), messages_since_start: 42 } });
+  const statusOf = (text) => analyze({ text, urls: [], codes: [] }, currentCatalog()).status;
+  const firstProduct = (text) => analyze({ text, urls: [], codes: [] }, currentCatalog()).products?.[0]?.id;
+  const botChecks = [
+    ['/pausar iphone-16e responde', /Pausado/.test(cmd('/pausar iphone-16e'))],
+    ['produto pausado não alerta', statusOf('iPhone 16e 128GB R$ 3.199') === 'sem_produto'],
+    ['/produtos mostra pausado', /⏸ <code>iphone-16e/.test(cmd('/produtos'))],
+    ['/ativar volta a alertar', /Ativado/.test(cmd('/ativar iphone-16e')) && statusOf('iPhone 16e 128GB R$ 3.199') === 'alerta'],
+    ['/teto sobe o limite', /R\$\s?6\.000/.test(cmd('/teto iphone-17 6000')) && statusOf('Apple iPhone 17 256GB\nR$ 5.273') === 'alerta'],
+    ['/add cria produto novo', /Monitorando/.test(cmd('/add Galaxy S25 FE -ultra teto=2600'))],
+    ['produto do /add bate', firstProduct('📱 Celular Samsung Galaxy S25 FE 5G, 128GB\n\n💰 R$ 2.582,10') === 'galaxy-s25-fe'],
+    ['exclusão do /add funciona', statusOf('Galaxy S25 FE Ultra Edition R$ 2.400') === 'sem_produto'],
+    ['teto do /add funciona', statusOf('Galaxy S25 FE 256GB R$ 2.899') === 'acima_do_teto'],
+    ['/add duplicado é recusado', /Já existe/.test(cmd('/add galaxy s25 fe'))],
+    ['/remover de base é recusado', /não são removidos/.test(cmd('/remover iphone-17'))],
+    ['/remover do /add funciona', /Removido/.test(cmd('/remover galaxy-s25-fe')) && statusOf('Galaxy S25 FE R$ 2.400') === 'sem_produto'],
+    ['/teto com valor inválido explica uso', /Uso:/.test(cmd('/teto iphone-17 abc'))],
+    ['id desconhecido sugere /produtos', /não encontrado/.test(cmd('/pausar xpto'))],
+    ['/status mostra posts', /Posts desde o início: 42/.test(cmd('/status'))],
+  ];
+  for (const [name, ok] of botChecks) {
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok     ' : 'FALHOU '} bot: ${name}`);
+  }
+
+  const total = cases.length + dedupChecks.length + healthChecks.length + botChecks.length;
   console.log(`\n${total - failed}/${total} casos passaram`);
   process.exit(failed ? 1 : 0);
 }

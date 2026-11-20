@@ -74,4 +74,16 @@ const settings = {
   maxAgeMinutes: 60,
 };
 
-return [{ json: { catalog, settings } }];
+// Alterações feitas pelo bot (/pausar, /teto, /add) ficam no static data
+// do workflow e são aplicadas por cima da lista acima a cada execução.
+// A lista deste arquivo continua sendo a base: editar aqui e publicar
+// não apaga o que foi ajustado pelo bot.
+function applyOverrides(base, store) {
+  const overrides = store.overrides || {};
+  const merged = [...base, ...(store.custom || []).map((p) => ({ ...p, custom: true }))];
+  return merged.map((p) => ({ ...p, ...(overrides[p.id] || {}) }));
+}
+
+const store = typeof $getWorkflowStaticData === 'function' ? $getWorkflowStaticData('global') : {};
+
+return [{ json: { catalog: applyOverrides(catalog, store), baseIds: catalog.map((p) => p.id), settings } }];

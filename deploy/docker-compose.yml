@@ -41,6 +41,8 @@ services:
       TG_CHANNELS: ${TG_CHANNELS:-}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/deal-radar/ingest
       N8N_WEBHOOK_TOKEN: ${N8N_WEBHOOK_TOKEN}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - sessions:/sessions
       - data:/data
