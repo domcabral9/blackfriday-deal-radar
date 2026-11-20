@@ -1,0 +1,55 @@
+# Stack do Deal Radar. Projeto Compose separado ("deal-radar"), com rede,
+# volumes e banco proprios. Convive na mesma VM com outra instancia n8n
+# sem compartilhar nenhum dado com ela.
+name: deal-radar
+
+services:
+  n8n:
+    # Tag local fixa (docker tag n8nio/n8n:<versao> deal-radar/n8n:<versao>),
+    # para um pull de "latest" feito por outro projeto nao mudar esta stack.
+    image: deal-radar/n8n:2.9.4
+    pull_policy: never
+    container_name: deal-radar-n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5680:5678"   # acesso so via tunel SSH
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_SECURE_COOKIE: "false"
+      TZ: America/Sao_Paulo
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      # Cada post de canal vira uma execucao; o disco da VM e pequeno
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "72"
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: "5000"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    mem_limit: 1g
+
+  listener:
+    build: ../listener
+    image: deal-radar/listener:local
+    container_name: deal-radar-listener
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    environment:
+      TG_API_ID: ${TG_API_ID}
+      TG_API_HASH: ${TG_API_HASH}
+      TG_CHANNELS: ${TG_CHANNELS:-}
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/deal-radar/ingest
+      N8N_WEBHOOK_TOKEN: ${N8N_WEBHOOK_TOKEN}
+    volumes:
+      - sessions:/sessions
+      - data:/data
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  n8n_data:
+  sessions:
+  data:
