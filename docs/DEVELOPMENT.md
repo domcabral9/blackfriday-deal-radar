@@ -78,6 +78,27 @@ ssh -N -L 5680:127.0.0.1:5680 n8n-poc
 4. No editor do n8n, *Credentials* > *Create credential* > *Telegram API*, colar o token. O nome é livre: o deploy encontra a credencial pelo tipo.
 5. Colocar `TELEGRAM_CHAT_ID=<id>` no `.env` da VM e rodar o deploy do workflow.
 
+## Ligar e desligar junto com o Windows
+
+O radar só funciona com a VM ligada, e a VM roda no PC pessoal. Dois scripts em
+[`deploy/windows/`](../deploy/windows/) cuidam do ciclo, com log em `%LOCALAPPDATA%\deal-radar\vm.log`:
+
+| Momento | Script | Como é disparado |
+|---|---|---|
+| Logon | `start-vm.ps1`: liga a VM headless e espera o SSH | tarefa agendada *DealRadar - Ligar VM* (45 s de atraso) |
+| Logoff, desligar ou reiniciar | `stop-vm.ps1`: botão ACPI, com *savestate* se passar de 60 s | script de logoff via `gpedit.msc` |
+
+Dentro da VM, nada precisa ser feito: o Docker sobe no boot e os containers têm
+`restart: unless-stopped`. Ciclo medido: desligamento limpo em cerca de 13 s, SSH de volta em
+cerca de 45 s, listener reconectado logo em seguida.
+
+O desligamento limpo importa porque uma VM morta junto com o Windows já teve o journal do ext4
+abortado e o disco remontado como somente leitura.
+
+Para registrar o script de logoff: `gpedit.msc` > *Configuração do Usuário* > *Configurações do
+Windows* > *Scripts (Logon/Logoff)* > *Fazer logoff* > aba *Scripts do PowerShell* > *Adicionar*, com
+o caminho completo de `stop-vm.ps1`.
+
 ## Como mudar regras
 
 ### Cadastrar ou ajustar um produto
