@@ -14,6 +14,13 @@ const COUPON_STOPWORDS = new Set([
   'DESCONTO', 'CUPOM', 'CUPONS', 'ATIVO', 'ATIVE', 'RESGATE', 'AQUI', 'USE',
 ]);
 
+// Alguns canais inserem caracteres invisíveis no meio das palavras
+// ("Mon⁠itor") para dificultar cópia e busca. Sem remover, "iphone"
+// vira "iph one" depois da normalização e nada bate.
+function stripInvisible(text) {
+  return String(text || '').replace(/[­​-‏⁠-⁯﻿]/g, '');
+}
+
 function normalize(text) {
   return text
     .normalize('NFD')
@@ -57,6 +64,13 @@ function extractPrices(text) {
     if (/(^|\s)de\s*$/.test(before) && /por\s*r\$/i.test(t)) continue;
     cash.push(value);
   }
+
+  // Preço escrito sem "R$": "saindo a 5273", "💰 5.273 no pix"
+  const bare = /(?:saindo a|saindo por|sai por|sai a|por apenas|💰)\s*([\d][\d.]*(?:,\d{1,2})?)(?!\s*x)/gi;
+  while ((m = bare.exec(t)) !== null) {
+    const value = parseBRL(m[1]);
+    if (value !== null && value >= 10) cash.push(value);
+  }
   return { cash, installments };
 }
 
@@ -77,18 +91,40 @@ function extractCoupon(post) {
   return null;
 }
 
+// Linhas com link que não é o produto: cadastro no Prime, grupos, canais
+const NON_OFFER_LINE = /prime|cadastr|teste por|gr[aá]tis por|grupo|whatsapp|canal|instagram|sigam?/i;
+const OFFER_LINE = /compr[ea]|link|aqui|site|🛒/i;
+
 function pickOfferUrl(post) {
-  const urls = (post.urls || []).filter((u) => /^https?:\/\//i.test(u) && !NON_OFFER_HOSTS.test(u));
-  if (urls.length) return urls[0];
-  const inText = (post.text || '').match(/https?:\/\/[^\s)]+/g) || [];
-  return inText.find((u) => !NON_OFFER_HOSTS.test(u)) || null;
+  const text = post.text || '';
+  const lines = text.split('\n');
+  const lineOf = (url) => lines.find((l) => l.includes(url)) || '';
+  const inText = text.match(/https?:\/\/[^\s)]+/g) || [];
+  const all = [...(post.urls || []), ...inText]
+    .filter((u, i, arr) => /^https?:\/\//i.test(u) && !NON_OFFER_HOSTS.test(u) && arr.indexOf(u) === i);
+
+  const usable = all.filter((u) => !NON_OFFER_LINE.test(lineOf(u)) || OFFER_LINE.test(lineOf(u)) && !/prime/i.test(lineOf(u)));
+  const preferred = usable.find((u) => OFFER_LINE.test(lineOf(u)));
+  return preferred || usable[0] || all[0] || null;
 }
 
-function extractTitle(text) {
+function extractTitle(text, product) {
   const lines = (text || '')
     .split('\n')
-    .map((l) => l.replace(/[\p{Extended_Pictographic}‍️]/gu, '').replace(/\s+/g, ' ').trim())
-    .filter((l) => l.length > 3 && !/^https?:\/\//i.test(l) && !/r\$\s*\d/i.test(l));
+    .map((l) => l
+      .replace(/[\p{Extended_Pictographic}‍️]/gu, '')
+      // "Produto X | De R$ 2.119 Por R$ 1.719": mantém só o produto
+      .replace(/\s*\|?\s*(de\s*)?r\$.*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim())
+    .filter((l) => l.length > 3 && !/^https?:\/\//i.test(l));
+  // A primeira linha costuma ser comentário ("Baixouuuu!!"); a linha com o
+  // modelo do produto é o título de verdade
+  if (product) {
+    const model = buildMatcher(product).model;
+    const withModel = lines.find((l) => model.test(normalize(l)));
+    if (withModel) return withModel;
+  }
   return lines[0] || '';
 }
 
@@ -118,7 +154,17 @@ function matchProducts(post, catalog) {
   });
 }
 
-function analyze(post, catalog) {
+function ageMinutes(post, now) {
+  const posted = Date.parse(post.posted_at);
+  return Number.isFinite(posted) ? (now - posted) / 60000 : 0;
+}
+
+function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
+  const post = { ...rawPost, text: stripInvisible(rawPost.text), codes: (rawPost.codes || []).map(stripInvisible) };
+  const maxAge = settings.maxAgeMinutes ?? Infinity;
+  const age = ageMinutes(post, now);
+  if (age > maxAge) return { status: 'antigo', ageMinutes: Math.round(age) };
+
   const matched = matchProducts(post, catalog);
   if (!matched.length) return { status: 'sem_produto' };
 
@@ -147,7 +193,7 @@ function analyze(post, catalog) {
     installment,
     coupon: extractCoupon(post),
     offerUrl: pickOfferUrl(post),
-    title: extractTitle(post.text),
+    title: extractTitle(post.text, primary),
     source: post.source,
     postUrl: post.post_url,
     postedAt: post.posted_at,
@@ -156,12 +202,12 @@ function analyze(post, catalog) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { normalize, parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
+  module.exports = { stripInvisible, normalize,parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
 }
 
 if (typeof $input !== 'undefined') {
-  const catalog = $('Catálogo de produtos').first().json.catalog;
+  const { catalog, settings } = $('Catálogo de produtos').first().json;
   const post = $('Webhook').first().json.body;
-  const result = analyze(post, catalog);
+  const result = analyze(post, catalog, settings);
   return [{ json: result }];
 }

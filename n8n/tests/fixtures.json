@@ -117,6 +117,51 @@
     "expect": { "status": "sem_produto" }
   },
   {
+    "name": "Real (Rodrigo Moreira): caracteres invisíveis no meio das palavras",
+    "post": {
+      "text": "📱 Ap⁠ple iPh⁠one 16e 128 GB Pr⁠eto\n\n💰 R$ 3.199 no Pix\n\n🤑Use o cupom 20BF26PRIME\n\n🛒 Coloque no carrinho para segurar o valor antes que acabe:\n📱 Compre aqui: https://link.amazon/B0xxxxx01\n\nR$3.499 em até 10x sem juros",
+      "urls": ["https://link.amazon/B0xxxxx01"],
+      "codes": ["20BF26PRIME"]
+    },
+    "expect": { "status": "alerta", "product": "iphone-16e", "price": 3199, "coupon": "20BF26PRIME", "title": "Apple iPhone 16e 128 GB Preto", "offerUrl": "https://link.amazon/B0xxxxx01" }
+  },
+  {
+    "name": "Real (VRL): link do Prime antes do produto e preço na linha do título",
+    "post": {
+      "text": "🔥 Smart TV LG 55\" QNED80 4K ThinQ AI | De R$3.999,99 Por R$ 2.799,00\n\n☝️ Use o Cupom: 20BF26PRIME\n🚛 Frete Grátis (Prime)\n✅ Parcelado em 10x sem juros\n\n‼️ Exclusivo Prime! Se ainda não possui cadastre-se e teste por 30 dias grátis: https://link.amazon/B02qbc48T\n\n➡️ COMPRE PELO SITE: https://cutt.ly/abc",
+      "urls": ["https://link.amazon/B02qbc48T", "https://cutt.ly/abc"],
+      "codes": ["20BF26PRIME"]
+    },
+    "expect": { "status": "alerta", "product": "tv-lg-qned", "price": 2799, "title": "Smart TV LG 55\" QNED80 4K ThinQ AI", "offerUrl": "https://cutt.ly/abc" }
+  },
+  {
+    "name": "Real (Rodrigo Moreira): preço sem R$ e comentário na primeira linha",
+    "post": {
+      "text": "Pessoal, não é o melhor preço que já apareceu, mas ainda compensa! 🔥\n\n🎁Apple iPhone 17 de 256 GB, Azul-névoa\n\n💰 saindo a 5273\n\n🛒preto: https://link.amazon/B07LmgaH2",
+      "urls": ["https://link.amazon/B07LmgaH2"]
+    },
+    "expect": { "status": "acima_do_teto", "price": 5273 }
+  },
+  {
+    "name": "Título é a linha que contém o modelo",
+    "post": { "text": "Baixouuuu!!\n\n🍎 Apple iPhone 16e de 128GB, Preto\n\n💰 R$ 3.099 no Pix" },
+    "expect": { "status": "alerta", "price": 3099, "title": "Apple iPhone 16e de 128GB, Preto" }
+  },
+  {
+    "name": "Corte de tempo: post de 2 horas atrás é ignorado",
+    "settings": { "maxAgeMinutes": 60 },
+    "now": "2026-11-27T12:00:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T10:00:00+00:00" },
+    "expect": { "status": "antigo" }
+  },
+  {
+    "name": "Corte de tempo: post de 10 minutos atrás passa",
+    "settings": { "maxAgeMinutes": 60 },
+    "now": "2026-11-27T12:00:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T11:50:00+00:00" },
+    "expect": { "status": "alerta", "product": "iphone-16e" }
+  },
+  {
     "name": "Link do próprio Telegram não vira link da oferta",
     "post": { "text": "iPhone 16e 128GB R$ 3.299", "urls": ["https://t.me/canal", "https://amzn.to/zz"] },
     "expect": { "offerUrl": "https://amzn.to/zz" }

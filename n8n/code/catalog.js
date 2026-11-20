@@ -68,4 +68,10 @@ const catalog = [
   },
 ].map((p) => ({ active: true, ...p }));
 
-return [{ json: { catalog } }];
+const settings = {
+  // Posts publicados há mais tempo que isso são ignorados. Evita alerta de
+  // oferta velha quando o listener volta de uma queda e recupera o atraso.
+  maxAgeMinutes: 60,
+};
+
+return [{ json: { catalog, settings } }];

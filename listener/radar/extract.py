@@ -5,12 +5,10 @@ Toda regra de negocio (qual produto, preco, cupom final) fica no n8n.
 """
 
 from telethon.tl.types import (
-    KeyboardButtonUrl,
     MessageEntityCode,
     MessageEntityPre,
     MessageEntityTextUrl,
     MessageEntityUrl,
-    ReplyInlineMarkup,
 )
 
 
@@ -35,13 +33,15 @@ def build_payload(message, chat) -> dict:
         elif isinstance(entity, (MessageEntityCode, MessageEntityPre)):
             codes.append(text.strip())
 
+    # Botoes lidos por atributo: os nomes das classes de botao mudam entre
+    # camadas da API do Telegram (KeyboardButtonUrl sumiu no Telethon 1.46)
     buttons = []
-    if isinstance(message.reply_markup, ReplyInlineMarkup):
-        for row in message.reply_markup.rows:
-            for button in row.buttons:
-                if isinstance(button, KeyboardButtonUrl):
-                    buttons.append({"text": button.text, "url": button.url})
-                    urls.append(button.url)
+    for row in getattr(message.reply_markup, "rows", None) or []:
+        for button in getattr(row, "buttons", None) or []:
+            url = getattr(button, "url", None)
+            if isinstance(url, str) and url:
+                buttons.append({"text": getattr(button, "text", ""), "url": url})
+                urls.append(url)
 
     return {
         "source": {

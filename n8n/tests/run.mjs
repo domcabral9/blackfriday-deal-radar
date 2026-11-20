@@ -51,7 +51,7 @@ if (corpusPath === '--preview') {
   let failed = 0;
   for (const c of cases) {
     const post = { codes: [], urls: [], ...c.post };
-    const r = analyze(post, catalog);
+    const r = analyze(post, catalog, c.settings, c.now ? Date.parse(c.now) : undefined);
     const errors = [];
     for (const [key, expected] of Object.entries(c.expect)) {
       const actual = key === 'product' ? r.products?.[0]?.id ?? null : r[key] ?? null;
