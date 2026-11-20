@@ -21,3 +21,6 @@ __pycache__/
 *.pyc
 .venv/
 node_modules/
+
+# Prints originais do celular (com EXIF); no repo vão as versões tratadas
+docs/images/Screenshot_*
