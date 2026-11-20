@@ -13,7 +13,7 @@ Resumo das regras aplicadas aqui:
 
 `scripts/check-style.mjs` roda em dois pontos:
 
-- hook `PostToolUse` em `.claude/settings.json`, a cada edição de `.md`;
+- hook local do editor (opcional, fora do git), a cada edição de `.md`;
 - CI em `.github/workflows/style-check.yml`, em todo PR para `main`.
 
 Travessão e assinatura de IA bloqueiam. Contraste negativo só lista candidatos para revisão manual.

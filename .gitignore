@@ -14,8 +14,7 @@ data/
 
 # Notas locais
 prompt.txt
-.claude/style-check-local.json
-.claude/settings.local.json
+.claude/
 
 # Python / Node
 __pycache__/
