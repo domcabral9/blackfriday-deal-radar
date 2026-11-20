@@ -3,7 +3,10 @@
 Radar pessoal de ofertas: escuta canais de promoção no Telegram, cruza cada post com uma lista de
 produtos-alvo e manda um alerta formatado para um bot privado assim que algo relevante aparece.
 
-> **Status**: em construção. Fase 0 (infraestrutura e backup) concluída.
+> **Status**: em construção. Infraestrutura, listener e motor de matching prontos e testados
+> (28 casos). Falta conectar a conta do Telegram e o bot de alertas.
+
+Documentação: [arquitetura](docs/architecture.md) · [desenvolvimento e operação](docs/DEVELOPMENT.md)
 
 ## Como funciona
 

@@ -1,0 +1,236 @@
+{
+  "id": "dealRadarMain001",
+  "name": "Deal Radar: alertas de oferta",
+  "active": false,
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deal-radar/ingest",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "webhookId": "deal-radar-ingest",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dealRadarHook001",
+          "name": "Deal Radar: token do webhook"
+        }
+      }
+    },
+    {
+      "id": "cata-logo-de-produtos",
+      "name": "Catálogo de produtos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Code node \"Catálogo de produtos\".\n//\n// Para cadastrar um produto novo, adicione um objeto nesta lista e salve o\n// workflow. A ordem importa: quando um post bate com mais de um item, o\n// primeiro da lista vira o título do alerta.\n//\n// Campos:\n//   id         identificador curto e único\n//   label      nome exibido no alerta\n//   model      regex do modelo (texto já normalizado: minúsculo, sem acento)\n//   excludeAfter  variantes descartadas quando aparecem logo depois do modelo\n//   requireAll lista de regex que também precisam aparecer no texto\n//   size       polegadas exigidas (TVs)\n//   minPrice   abaixo disso é acessório (capa, película, suporte) e é ignorado\n//   maxPrice   teto de preço; parcelado conta pelo total\n//   active     false pausa o produto sem apagar\n\nconst PHONE = { minPrice: 900, maxPrice: 5000 };\nconst TV = { minPrice: 1200, maxPrice: 5000 };\n\nconst catalog = [\n  { id: 'iphone-16e', label: 'iPhone 16e', model: 'iphone\\\\s?16\\\\s?e', ...PHONE },\n  {\n    id: 'iphone-17',\n    label: 'iPhone 17',\n    model: 'iphone\\\\s?17',\n    excludeAfter: ['e', 'pro', 'air', 'plus', 'max'],\n    ...PHONE,\n  },\n  {\n    id: 'galaxy-s26',\n    label: 'Samsung Galaxy S26',\n    model: 's\\\\s?26',\n    excludeAfter: ['fe', '\\\\+', 'plus', 'ultra', 'edge'],\n    requireAll: ['galaxy|samsung'],\n    ...PHONE,\n  },\n  {\n    id: 'tv-lg-mrgb85',\n    label: 'Smart TV LG 55\" MRGB85',\n    model: 'mrgb\\\\s?85',\n    requireAll: ['\\\\blg\\\\b'],\n    size: 55,\n    ...TV,\n  },\n  {\n    id: 'tv-lg-qned',\n    label: 'Smart TV LG 55\" QNED',\n    model: 'qned',\n    requireAll: ['\\\\blg\\\\b'],\n    size: 55,\n    ...TV,\n  },\n  {\n    id: 'moto-edge-70',\n    label: 'Motorola Edge 70',\n    model: 'edge\\\\s?70',\n    excludeAfter: ['fusion', 'pro'],\n    requireAll: ['motorola|\\\\bmoto\\\\b'],\n    ...PHONE,\n  },\n  {\n    id: 'galaxy-a57-256',\n    label: 'Samsung Galaxy A57 256 GB',\n    model: 'a\\\\s?57',\n    requireAll: ['galaxy|samsung', '\\\\b256\\\\s?(gb|g)\\\\b'],\n    ...PHONE,\n  },\n].map((p) => ({ active: true, ...p }));\n\nreturn [{ json: { catalog } }];\n"
+      }
+    },
+    {
+      "id": "analisar-oferta",
+      "name": "Analisar oferta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Code node \"Analisar oferta\".\n//\n// Entrada: o post enviado pelo listener (corpo do Webhook) e o catálogo.\n// Saída: zero itens (post sem interesse) ou um item com a oferta já\n// estruturada: produtos que bateram, preço, cupom, link e descrição.\n//\n// O arquivo roda igual dentro do n8n e no harness de teste local\n// (n8n/tests/run.mjs): as funções puras ficam no topo e a \"cola\" com o n8n\n// só executa quando $input existe.\n\nconst NON_OFFER_HOSTS = /^https?:\\/\\/(t\\.me|telegram\\.me|chat\\.whatsapp\\.com|wa\\.me|instagram\\.com)\\b/i;\nconst COUPON_STOPWORDS = new Set([\n  'DE', 'DO', 'NO', 'NA', 'OFF', 'APLICADO', 'CARRINHO', 'SITE', 'APP', 'PIX',\n  'DESCONTO', 'CUPOM', 'CUPONS', 'ATIVO', 'ATIVE', 'RESGATE', 'AQUI', 'USE',\n]);\n\nfunction normalize(text) {\n  return text\n    .normalize('NFD')\n    .replace(/[̀-ͯ]/g, '')\n    .toLowerCase()\n    .replace(/[^a-z0-9+]+/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction parseBRL(raw) {\n  // \"4.299,00\" -> 4299 ; \"4299\" -> 4299 ; \"4.299\" -> 4299\n  const clean = raw.replace(/\\.(?=\\d{3}(\\D|$))/g, '').replace(',', '.');\n  const value = parseFloat(clean);\n  return Number.isFinite(value) ? value : null;\n}\n\nfunction extractPrices(text) {\n  const t = text.replace(/ /g, ' ');\n  const cash = [];\n  const installments = [];\n  const re = /r\\$\\s*([\\d.]+(?:,\\d{1,2})?)/gi;\n  let m;\n  while ((m = re.exec(t)) !== null) {\n    const value = parseBRL(m[1]);\n    if (value === null) continue;\n    const before = t.slice(Math.max(0, m.index - 30), m.index).toLowerCase();\n    const after = t.slice(m.index + m[0].length, m.index + m[0].length + 20).toLowerCase();\n\n    // Valores de desconto/cupom/cashback, que não são preço do produto\n    if (/^\\s*(off|de desconto|em cupom|de cashback)/.test(after)) continue;\n    if (/(cupom|desconto|cashback|economi[zs]e|economia|off)\\s*(de)?\\s*$/.test(before)) continue;\n\n    const inst = before.match(/(\\d{1,2})\\s*x\\s*(sem juros\\s*)?(de)?\\s*$/);\n    if (inst) {\n      const times = parseInt(inst[1], 10);\n      installments.push({ times, each: value, total: +(value * times).toFixed(2) });\n      continue;\n    }\n    // Preço antigo riscado: \"de R$ 6.999 por R$ 4.999\"\n    if (/(^|\\s)de\\s*$/.test(before) && /por\\s*r\\$/i.test(t)) continue;\n    cash.push(value);\n  }\n  return { cash, installments };\n}\n\nfunction extractCoupon(post) {\n  const valid = (c) => /^[A-Z0-9][A-Z0-9_-]{3,24}$/i.test(c) && /\\d|[A-Z]{4,}/.test(c) && !COUPON_STOPWORDS.has(c.toUpperCase());\n\n  // 1) Cupom formatado como `código` no Telegram (toque para copiar)\n  const fromEntities = (post.codes || []).map((c) => c.trim()).filter((c) => valid(c) && !/^\\d+$/.test(c));\n  if (fromEntities.length) return fromEntities[0];\n\n  // 2) \"Cupom: XPTO10\", \"cupom XPTO10\", \"use o cupom XPTO10\"\n  const re = /cupom\\s*(?:de\\s+r\\$\\s*[\\d.,]+\\s*(?:off)?)?\\s*[:\\-–]?\\s*[\"“'`]?([A-Za-z0-9_-]{4,25})/gi;\n  let m;\n  while ((m = re.exec(post.text || '')) !== null) {\n    const code = m[1];\n    if (valid(code) && code === code.toUpperCase()) return code;\n  }\n  return null;\n}\n\nfunction pickOfferUrl(post) {\n  const urls = (post.urls || []).filter((u) => /^https?:\\/\\//i.test(u) && !NON_OFFER_HOSTS.test(u));\n  if (urls.length) return urls[0];\n  const inText = (post.text || '').match(/https?:\\/\\/[^\\s)]+/g) || [];\n  return inText.find((u) => !NON_OFFER_HOSTS.test(u)) || null;\n}\n\nfunction extractTitle(text) {\n  const lines = (text || '')\n    .split('\\n')\n    .map((l) => l.replace(/[\\p{Extended_Pictographic}‍️]/gu, '').replace(/\\s+/g, ' ').trim())\n    .filter((l) => l.length > 3 && !/^https?:\\/\\//i.test(l) && !/r\\$\\s*\\d/i.test(l));\n  return lines[0] || '';\n}\n\nfunction buildMatcher(product) {\n  const variants = (product.excludeAfter || []).map((v) => (/\\w$/.test(v) ? `${v}\\\\b` : v));\n  // Modelo terminado em número não pode emendar outro dígito (s26 != s260)\n  let lookahead = /\\d$/.test(product.model) ? '(?!\\\\d)' : '';\n  if (variants.length) lookahead += `(?!\\\\s?(?:${variants.join('|')}))`;\n  return {\n    // Não precedido de letra: aceita modelo colado no tamanho (\"55mrgb85\")\n    model: new RegExp(`(?<![a-z])(?:${product.model})${lookahead}`),\n    requireAll: (product.requireAll || []).map((r) => new RegExp(r)),\n    size: product.size ? new RegExp(`\\\\b${product.size}(?!\\\\d)`) : null,\n  };\n}\n\nfunction matchProducts(post, catalog) {\n  const textNoPrices = (post.text || '').replace(/r\\$\\s*[\\d.,]+/gi, ' ');\n  const norm = normalize(textNoPrices);\n  return catalog.filter((p) => {\n    if (p.active === false) return false;\n    const m = buildMatcher(p);\n    if (!m.model.test(norm)) return false;\n    if (!m.requireAll.every((r) => r.test(norm))) return false;\n    if (m.size && !m.size.test(norm)) return false;\n    return true;\n  });\n}\n\nfunction analyze(post, catalog) {\n  const matched = matchProducts(post, catalog);\n  if (!matched.length) return { status: 'sem_produto' };\n\n  const { cash, installments } = extractPrices(post.text || '');\n  const primary = matched[0];\n  const plausibleCash = cash.filter((v) => v >= primary.minPrice);\n  const plausibleInst = installments.filter((i) => i.total >= primary.minPrice);\n\n  // Só valores abaixo do piso apareceram: é acessório (capa, película...)\n  if ((cash.length || installments.length) && !plausibleCash.length && !plausibleInst.length) {\n    return { status: 'acessorio', matched: matched.map((p) => p.id) };\n  }\n\n  const candidates = [...plausibleCash, ...plausibleInst.map((i) => i.total)];\n  const price = candidates.length ? Math.min(...candidates) : null;\n  const installment = plausibleInst.sort((a, b) => a.total - b.total)[0] || null;\n\n  if (price !== null && price > primary.maxPrice) {\n    return { status: 'acima_do_teto', matched: matched.map((p) => p.id), price };\n  }\n\n  return {\n    status: 'alerta',\n    products: matched.map((p) => ({ id: p.id, label: p.label })),\n    price,\n    installment,\n    coupon: extractCoupon(post),\n    offerUrl: pickOfferUrl(post),\n    title: extractTitle(post.text),\n    source: post.source,\n    postUrl: post.post_url,\n    postedAt: post.posted_at,\n    messageId: post.message_id,\n  };\n}\n\nif (typeof module !== 'undefined') {\n  module.exports = { normalize, parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };\n}\n\nif (typeof $input !== 'undefined') {\n  const catalog = $('Catálogo de produtos').first().json.catalog;\n  const post = $('Webhook').first().json.body;\n  const result = analyze(post, catalog);\n  return [{ json: result }];\n}\n"
+      }
+    },
+    {
+      "id": "e-alerta-",
+      "name": "É alerta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "status-alerta",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "alerta",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "deduplicar",
+      "name": "Deduplicar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Code node \"Deduplicar\".\n//\n// A mesma oferta costuma aparecer nos dois canais, ou ser repostada no mesmo\n// canal com outro link de afiliado. A chave é produto + preço arredondado:\n// links mudam entre canais, preço e produto não. Sem preço, a chave cai para\n// o link da oferta.\n//\n// O estado vive no static data do workflow, que o n8n só persiste em\n// execuções de produção (workflow ativo). Em teste manual, nada é lembrado.\n\nconst WINDOW_HOURS = 12;\n\nfunction dedupKey(offer) {\n  const product = offer.products[0].id;\n  const anchor = offer.price !== null ? `R$${Math.round(offer.price)}` : offer.offerUrl || offer.postUrl;\n  return `${product}|${anchor}`;\n}\n\nfunction isDuplicate(store, offer, now = Date.now()) {\n  store.seen = store.seen || {};\n  const cutoff = now - WINDOW_HOURS * 3600 * 1000;\n  for (const [k, ts] of Object.entries(store.seen)) {\n    if (ts < cutoff) delete store.seen[k];\n  }\n  const key = dedupKey(offer);\n  if (store.seen[key]) return true;\n  store.seen[key] = now;\n  return false;\n}\n\nif (typeof module !== 'undefined') module.exports = { dedupKey, isDuplicate };\n\nif (typeof $input !== 'undefined') {\n  const store = $getWorkflowStaticData('global');\n  return $input.all().filter((item) => !isDuplicate(store, item.json));\n}\n"
+      }
+    },
+    {
+      "id": "formatar-alerta",
+      "name": "Formatar alerta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Code node \"Formatar alerta\".\n//\n// Monta a mensagem no subset de HTML aceito pela Bot API (b, i, a, code) e os\n// dois botões: link da oferta e post original no canal.\n\nconst TZ = 'America/Sao_Paulo';\n\nfunction esc(s) {\n  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\n\nfunction brl(value) {\n  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);\n}\n\nfunction stamp(date) {\n  return new Intl.DateTimeFormat('pt-BR', {\n    timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',\n  }).format(date).replace(',', '');\n}\n\nfunction formatAlert(offer, now = new Date()) {\n  const [main, ...others] = offer.products;\n  const lines = [`🎯 <b>${esc(main.label)}</b>`];\n  if (others.length) lines.push(`<i>também: ${esc(others.map((p) => p.label).join(', '))}</i>`);\n  if (offer.title) lines.push(esc(offer.title));\n  lines.push('');\n\n  if (offer.price !== null) {\n    let priceLine = `💰 <b>${brl(offer.price)}</b>`;\n    const inst = offer.installment;\n    if (inst && Math.abs(inst.total - offer.price) > 0.01) {\n      priceLine += ` ou ${inst.times}x de ${brl(inst.each)}`;\n    } else if (inst) {\n      priceLine += ` em ${inst.times}x de ${brl(inst.each)}`;\n    }\n    lines.push(priceLine);\n  } else {\n    lines.push('💰 <i>preço não identificado no post</i>');\n  }\n\n  lines.push(offer.coupon ? `🎟 Cupom: <code>${esc(offer.coupon)}</code>` : '🎟 Sem cupom');\n  lines.push(`📣 Fonte: <b>${esc(offer.source?.title)}</b>`);\n  lines.push(`🕒 ${stamp(now)}`);\n\n  const offerUrl = offer.offerUrl || offer.postUrl;\n  return {\n    text: lines.join('\\n'),\n    offerUrl,\n    postUrl: offer.postUrl,\n  };\n}\n\nif (typeof module !== 'undefined') module.exports = { formatAlert, esc, brl, stamp };\n\nif (typeof $input !== 'undefined') {\n  return $input.all().map((item) => ({ json: { ...item.json, ...formatAlert(item.json) } }));\n}\n"
+      }
+    },
+    {
+      "id": "enviar-no-telegram",
+      "name": "Enviar no Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "chatId": "<TELEGRAM_CHAT_ID>",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔗 Abrir oferta",
+                    "additionalFields": {
+                      "url": "={{ $json.offerUrl }}"
+                    }
+                  },
+                  {
+                    "text": "💬 Post original",
+                    "additionalFields": {
+                      "url": "={{ $json.postUrl }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "dealRadarBot0001",
+          "name": "Deal Radar: bot de alertas"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Catálogo de produtos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catálogo de produtos": {
+      "main": [
+        [
+          {
+            "node": "Analisar oferta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar oferta": {
+      "main": [
+        [
+          {
+            "node": "É alerta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É alerta?": {
+      "main": [
+        [
+          {
+            "node": "Deduplicar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicar": {
+      "main": [
+        [
+          {
+            "node": "Formatar alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar alerta": {
+      "main": [
+        [
+          {
+            "node": "Enviar no Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataSuccessExecution": "all"
+  },
+  "tags": []
+}

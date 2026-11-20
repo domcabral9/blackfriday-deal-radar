@@ -1,0 +1,124 @@
+[
+  {
+    "name": "S26 com preço à vista, parcelado e cupom no texto",
+    "post": {
+      "text": "🔥 Smartphone Samsung Galaxy S26 5G 256GB 12GB RAM Tela 6.2\" Preto\n\n💸 R$ 4.299,00 à vista\n💳 ou 10x de R$ 459,90 sem juros\n\n🎟 Use o cupom: BLACKS26\n\n🛒 https://amzn.to/abc123"
+    },
+    "expect": { "status": "alerta", "product": "galaxy-s26", "price": 4299, "coupon": "BLACKS26", "offerUrl": "https://amzn.to/abc123" }
+  },
+  {
+    "name": "S26 Ultra é descartado",
+    "post": { "text": "Samsung Galaxy S26 Ultra 512GB Titânio\nR$ 6.999,00" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "S26+ é descartado",
+    "post": { "text": "Galaxy S26+ 256GB\nR$ 4.999" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "S26 Plus é descartado",
+    "post": { "text": "Samsung Galaxy S26 Plus 5G 256GB\nR$ 4.799" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "S26 FE é descartado",
+    "post": { "text": "Samsung Galaxy S26 FE 128GB\nR$ 2.999" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Capa de iPhone 17 é acessório",
+    "post": { "text": "Capa de Silicone com MagSafe para iPhone 17\nR$ 89,90" },
+    "expect": { "status": "acessorio" }
+  },
+  {
+    "name": "iPhone 17 Pro Max é descartado",
+    "post": { "text": "Apple iPhone 17 Pro Max 256GB Laranja Cósmico\nR$ 8.999" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "iPhone 17e é descartado",
+    "post": { "text": "iPhone 17e 128GB\nR$ 3.999" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "iPhone 17 acima do teto, preço antigo riscado ignorado",
+    "post": { "text": "iPhone 17 128GB Branco\nDe R$ 7.999 por R$ 5.399\nou 12x de R$ 449,92" },
+    "expect": { "status": "acima_do_teto", "price": 5399 }
+  },
+  {
+    "name": "iPhone 17 dentro do teto",
+    "post": { "text": "Apple iPhone 17 256GB Lavanda\nDe R$ 7.299 por R$ 4.899 no Pix" },
+    "expect": { "status": "alerta", "product": "iphone-17", "price": 4899 }
+  },
+  {
+    "name": "iPhone 16e com cupom formatado como código",
+    "post": { "text": "iPhone 16e 128GB Preto\nR$ 3.499 no Pix\nCupom: APPLE200", "codes": ["APPLE200"], "urls": ["https://mercadolivre.com/sec/xyz"] },
+    "expect": { "status": "alerta", "product": "iphone-16e", "price": 3499, "coupon": "APPLE200", "offerUrl": "https://mercadolivre.com/sec/xyz" }
+  },
+  {
+    "name": "TV LG 55 QNED com modelo colado no tamanho",
+    "post": { "text": "Smart TV LG 55\" QNED80 4K ThinQ AI\nR$ 2.899,00" },
+    "expect": { "status": "alerta", "product": "tv-lg-qned", "price": 2899 }
+  },
+  {
+    "name": "TV LG MRGB85 com código de modelo completo",
+    "post": { "text": "Smart TV LG 55MRGB85SSA Mini RGB evo 4K\nR$ 4.499,00\nCupom: TVLG300" },
+    "expect": { "status": "alerta", "product": "tv-lg-mrgb85", "coupon": "TVLG300" }
+  },
+  {
+    "name": "TV LG QNED de 65 é descartada",
+    "post": { "text": "Smart TV LG 65\" QNED85 4K\nR$ 4.799" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Centavos 55 não contam como tamanho",
+    "post": { "text": "Smart TV LG 65 QNED80\nR$ 3.999,55" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Edge 70 Fusion é descartado",
+    "post": { "text": "Motorola Edge 70 Fusion 256GB\nR$ 1.999" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Edge 70 base entra",
+    "post": { "text": "Smartphone Motorola Edge 70 5G 512GB\nR$ 2.799" },
+    "expect": { "status": "alerta", "product": "moto-edge-70", "price": 2799 }
+  },
+  {
+    "name": "A57 de 128 GB é descartado",
+    "post": { "text": "Samsung Galaxy A57 5G 128GB\nR$ 1.899" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "A57 de 256 GB entra",
+    "post": { "text": "Samsung Galaxy A57 5G 256GB 8GB RAM\nR$ 2.199" },
+    "expect": { "status": "alerta", "product": "galaxy-a57-256", "price": 2199 }
+  },
+  {
+    "name": "Valor do cupom não vira preço",
+    "post": { "text": "Galaxy S26 256GB\nR$ 4.599\nCupom de R$ 300 OFF: SAMSUNG300" },
+    "expect": { "status": "alerta", "price": 4599, "coupon": "SAMSUNG300" }
+  },
+  {
+    "name": "Só parcelado, total dentro do teto",
+    "post": { "text": "Galaxy S26 128GB\nem até 10x de R$ 489,90 sem juros" },
+    "expect": { "status": "alerta", "price": 4899 }
+  },
+  {
+    "name": "Sem preço identificado ainda alerta",
+    "post": { "text": "Galaxy S26 em promoção relâmpago! Corre" },
+    "expect": { "status": "alerta", "price": null }
+  },
+  {
+    "name": "Post sem produto-alvo",
+    "post": { "text": "Air Fryer Mondial 4L\nR$ 249,90" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Link do próprio Telegram não vira link da oferta",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "urls": ["https://t.me/canal", "https://amzn.to/zz"] },
+    "expect": { "offerUrl": "https://amzn.to/zz" }
+  }
+]
