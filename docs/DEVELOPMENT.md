@@ -75,7 +75,7 @@ ssh -N -L 5680:127.0.0.1:5680 n8n-poc
    eles primeiro.
 3. Descobrir o `chat_id`: `curl -s https://api.telegram.org/bot<TOKEN>/getUpdates` e ler
    `result[0].message.chat.id`.
-4. No editor do n8n, *Credentials* > *Deal Radar: bot de alertas* (tipo Telegram API), colar o token.
+4. No editor do n8n, *Credentials* > *Create credential* > *Telegram API*, colar o token. O nome é livre: o deploy encontra a credencial pelo tipo.
 5. Colocar `TELEGRAM_CHAT_ID=<id>` no `.env` da VM e rodar o deploy do workflow.
 
 ## Como mudar regras

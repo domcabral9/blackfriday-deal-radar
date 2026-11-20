@@ -5,7 +5,7 @@
 //   node n8n/build-workflow.mjs
 //
 // Placeholders substituídos no deploy (valores reais nunca vão para o git):
-//   <TELEGRAM_CHAT_ID>
+//   <TELEGRAM_CHAT_ID>, <TELEGRAM_CRED_ID>, <TELEGRAM_CRED_NAME>
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const code = (f) => readFileSync(join(here, 'code', f), 'utf8');
 
 const CRED_WEBHOOK = { id: 'dealRadarHook001', name: 'Deal Radar: token do webhook' };
-const CRED_TELEGRAM = { id: 'dealRadarBot0001', name: 'Deal Radar: bot de alertas' };
+const CRED_TELEGRAM = { id: '<TELEGRAM_CRED_ID>', name: '<TELEGRAM_CRED_NAME>' };
 
 const node = (name, type, typeVersion, x, parameters, extra = {}) => ({
   id: name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-'),

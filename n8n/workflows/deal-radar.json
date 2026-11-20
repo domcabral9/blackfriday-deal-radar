@@ -153,8 +153,8 @@
       },
       "credentials": {
         "telegramApi": {
-          "id": "dealRadarBot0001",
-          "name": "Deal Radar: bot de alertas"
+          "id": "<TELEGRAM_CRED_ID>",
+          "name": "<TELEGRAM_CRED_NAME>"
         }
       }
     }

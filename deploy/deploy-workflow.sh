@@ -23,7 +23,13 @@ set -euo pipefail
 cd ~/deal-radar
 CHAT_ID=$(grep '^TELEGRAM_CHAT_ID=' deploy/.env | cut -d= -f2 || true)
 if [ -z "$CHAT_ID" ]; then echo "TELEGRAM_CHAT_ID ausente em deploy/.env"; exit 1; fi
-sed "s/<TELEGRAM_CHAT_ID>/$CHAT_ID/" deal-radar.json > /tmp/wf.json
+# Credencial do bot: achada pelo tipo, para nao depender do nome dado no editor
+docker exec deal-radar-n8n sh -c 'n8n export:credentials --all --output=/tmp/c.json >/dev/null 2>&1'
+CRED=$(docker exec deal-radar-n8n node -e 'const t=require("/tmp/c.json").find(c=>c.type==="telegramApi"); if(t) console.log(t.id+"\t"+t.name)')
+docker exec deal-radar-n8n rm -f /tmp/c.json
+if [ -z "$CRED" ]; then echo "credencial Telegram API nao encontrada no n8n"; exit 1; fi
+CRED_ID=$(printf '%s' "$CRED" | cut -f1); CRED_NAME=$(printf '%s' "$CRED" | cut -f2)
+sed -e "s/<TELEGRAM_CHAT_ID>/$CHAT_ID/" -e "s/<TELEGRAM_CRED_ID>/$CRED_ID/" -e "s|<TELEGRAM_CRED_NAME>|$CRED_NAME|" deal-radar.json > /tmp/wf.json
 docker cp /tmp/wf.json deal-radar-n8n:/tmp/wf.json && rm /tmp/wf.json
 docker exec deal-radar-n8n sh -c 'n8n import:workflow --input=/tmp/wf.json && n8n publish:workflow --id=dealRadarMain001; rm /tmp/wf.json' 2>&1 | grep -v 'Error tracking'
 docker restart deal-radar-n8n > /dev/null

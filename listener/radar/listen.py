@@ -19,6 +19,7 @@ from .extract import build_payload
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
 log = logging.getLogger("radar")
 logging.getLogger("telethon").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 RETRY_DELAYS = (2, 10, 30)
 
