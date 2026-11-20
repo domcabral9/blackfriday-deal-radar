@@ -80,7 +80,41 @@ if (corpusPath === '--preview') {
     if (!ok) failed++;
     console.log(`${ok ? 'ok     ' : 'FALHOU '} dedup: ${name}`);
   }
-  const total = cases.length + dedupChecks.length;
+  // Saúde: linha do tempo simulada (horários em UTC; BRT = UTC-3)
+  const { onBeat, evaluate } = load('health.js');
+  const h = {};
+  const at = (hhmmUtc) => Date.parse(`2026-11-27T${hhmmUtc}:00Z`);
+  const beat = (startedAt, lastMsg) => ({ started_at: startedAt, last_message_at: lastMsg, connected: true, channels: 2 });
+  const S1 = '2026-11-27T12:00:00Z';
+  const healthChecks = [
+    ['primeiro batimento avisa online', /Radar online/.test(onBeat(h, beat(S1, null), at('12:00')).join())],
+    ['primeira avaliação só calibra', evaluate(h, at('12:01')).length === 0],
+    ['batimento recente, nada a avisar', onBeat(h, beat(S1, '2026-11-27T12:04:00Z'), at('12:05')).length === 0 && evaluate(h, at('12:06')).length === 0],
+    ['14 min sem batimento ainda ok', evaluate(h, at('12:19')).length === 0],
+    ['16+ min sem batimento avisa queda', /sem sinal/.test(evaluate(h, at('12:22')).join())],
+    ['queda avisada uma vez só', evaluate(h, at('12:27')).length === 0],
+    ['volta do listener avisa', /de volta/.test(onBeat(h, beat('2026-11-27T12:30:00Z', '2026-11-27T12:30:00Z'), at('12:30')).join())],
+    ['3h sem posts às 15h30 BRT avisa silêncio', (() => {
+      for (let m = 35; m <= 60 * 3 + 35; m += 5) {
+        const t = at('12:30') + (m - 30) * 60000;
+        onBeat(h, beat('2026-11-27T12:30:00Z', '2026-11-27T12:30:00Z'), t);
+        const out = evaluate(h, t + 1000);
+        if (out.length) return /Nenhum post/.test(out.join());
+      }
+      return false;
+    })()],
+    ['post novo encerra o silêncio', /voltaram/.test(onBeat(h, beat('2026-11-27T12:30:00Z', '2026-11-27T15:50:00Z'), at('15:50')).join())],
+    ['VM fora por horas não acusa queda na volta', (() => {
+      const out = evaluate(h, at('23:50'));
+      return out.length === 0;
+    })()],
+  ];
+  for (const [name, ok] of healthChecks) {
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok     ' : 'FALHOU '} saúde: ${name}`);
+  }
+
+  const total = cases.length + dedupChecks.length + healthChecks.length;
   console.log(`\n${total - failed}/${total} casos passaram`);
   process.exit(failed ? 1 : 0);
 }

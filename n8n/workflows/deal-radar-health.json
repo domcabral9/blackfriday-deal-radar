@@ -1,0 +1,152 @@
+{
+  "id": "dealRadarHealth1",
+  "name": "Deal Radar: saúde",
+  "active": false,
+  "nodes": [
+    {
+      "id": "batimento-do-listener",
+      "name": "Batimento do listener",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deal-radar/heartbeat",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "webhookId": "deal-radar-heartbeat",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dealRadarHook001",
+          "name": "Deal Radar: token do webhook"
+        }
+      }
+    },
+    {
+      "id": "registrar-batimento",
+      "name": "Registrar batimento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const MODE = 'beat';\n\n// Code nodes \"Registrar batimento\" e \"Avaliar saúde\" (workflow de saúde).\n//\n// O build injeta `const MODE = 'beat'` ou `const MODE = 'check'` no topo,\n// e o mesmo arquivo serve aos dois nós. O estado fica no static data do\n// workflow, compartilhado entre o gatilho do webhook e o agendado.\n//\n// Sinais:\n//   batimento ausente há mais de STALE_MINUTES  -> listener caiu (vermelho)\n//   sem posts há QUIET_HOURS, dentro do horário -> canais em silêncio (amarelo)\n//   listener reiniciado ou de volta              -> online (verde)\n\nconst STALE_MINUTES = 15;\nconst QUIET_HOURS = 3;\nconst ACTIVE_HOURS = [9, 23]; // fora disso, silêncio nos canais é normal\nconst TZ = 'America/Sao_Paulo';\n\nfunction hourInTz(now) {\n  return parseInt(new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', hour12: false }).format(now), 10);\n}\n\nfunction hhmm(ms) {\n  return new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);\n}\n\nfunction onBeat(store, beat, now = Date.now()) {\n  const messages = [];\n  const firstEver = !store.startedAt;\n  const restarted = !firstEver && beat.started_at !== store.startedAt;\n\n  if (store.downAlerted) {\n    messages.push(`🟢 <b>Radar de volta</b>\\nListener respondendo de novo desde ${hhmm(now)}.`);\n  } else if (firstEver || restarted) {\n    messages.push(`🟢 <b>Radar online</b>\\nOuvindo ${beat.channels} canais desde ${hhmm(Date.parse(beat.started_at))}.`);\n  }\n\n  const lastMsg = beat.last_message_at ? Date.parse(beat.last_message_at) : null;\n  if (store.quietAlerted && lastMsg && lastMsg > store.quietAlertedAt) {\n    messages.push('🟢 <b>Posts voltaram a chegar</b> dos canais.');\n    store.quietAlerted = false;\n  }\n\n  store.lastBeatAt = now;\n  store.startedAt = beat.started_at;\n  store.lastMessageAt = lastMsg ?? store.lastMessageAt ?? Date.parse(beat.started_at);\n  store.connected = beat.connected;\n  store.downAlerted = false;\n  return messages;\n}\n\nfunction evaluate(store, now = Date.now()) {\n  const messages = [];\n  const previousCheck = store.lastCheckAt;\n  store.lastCheckAt = now;\n\n  if (!store.lastBeatAt) return messages;\n\n  // n8n também esteve fora (VM desligada, reboot): recomeça a contagem em vez\n  // de acusar o listener por um intervalo em que ninguém estava olhando\n  if (!previousCheck || now - previousCheck > 20 * 60000) {\n    store.lastBeatAt = Math.max(store.lastBeatAt, now);\n    store.lastMessageAt = Math.max(store.lastMessageAt || 0, now);\n    return messages;\n  }\n\n  const staleMin = (now - store.lastBeatAt) / 60000;\n  if (staleMin > STALE_MINUTES && !store.downAlerted) {\n    store.downAlerted = true;\n    messages.push(\n      `🔴 <b>Listener sem sinal há ${Math.round(staleMin)} min</b>\\n` +\n      'Nenhuma oferta está sendo lida. Verificar: <code>docker logs deal-radar-listener</code>'\n    );\n    return messages;\n  }\n\n  const hour = hourInTz(now);\n  const quietH = (now - (store.lastMessageAt || now)) / 3600000;\n  if (!store.downAlerted && !store.quietAlerted && hour >= ACTIVE_HOURS[0] && hour < ACTIVE_HOURS[1] && quietH > QUIET_HOURS) {\n    store.quietAlerted = true;\n    store.quietAlertedAt = now;\n    messages.push(\n      `🟡 <b>Nenhum post há ${Math.floor(quietH)}h</b>\\n` +\n      'O listener está vivo, mas os canais não mandaram nada. Pode ser sessão revogada ou canal parado.'\n    );\n  }\n  return messages;\n}\n\nif (typeof module !== 'undefined') module.exports = { onBeat, evaluate, hourInTz };\n\nif (typeof $input !== 'undefined') {\n  const store = $getWorkflowStaticData('global');\n  const texts = MODE === 'beat' ? onBeat(store, $input.first().json.body) : evaluate(store);\n  return texts.map((text) => ({ json: { text } }));\n}\n"
+      }
+    },
+    {
+      "id": "a-cada-5-minutos",
+      "name": "A cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        420
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "avaliar-sau-de",
+      "name": "Avaliar saúde",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const MODE = 'check';\n\n// Code nodes \"Registrar batimento\" e \"Avaliar saúde\" (workflow de saúde).\n//\n// O build injeta `const MODE = 'beat'` ou `const MODE = 'check'` no topo,\n// e o mesmo arquivo serve aos dois nós. O estado fica no static data do\n// workflow, compartilhado entre o gatilho do webhook e o agendado.\n//\n// Sinais:\n//   batimento ausente há mais de STALE_MINUTES  -> listener caiu (vermelho)\n//   sem posts há QUIET_HOURS, dentro do horário -> canais em silêncio (amarelo)\n//   listener reiniciado ou de volta              -> online (verde)\n\nconst STALE_MINUTES = 15;\nconst QUIET_HOURS = 3;\nconst ACTIVE_HOURS = [9, 23]; // fora disso, silêncio nos canais é normal\nconst TZ = 'America/Sao_Paulo';\n\nfunction hourInTz(now) {\n  return parseInt(new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', hour12: false }).format(now), 10);\n}\n\nfunction hhmm(ms) {\n  return new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(ms);\n}\n\nfunction onBeat(store, beat, now = Date.now()) {\n  const messages = [];\n  const firstEver = !store.startedAt;\n  const restarted = !firstEver && beat.started_at !== store.startedAt;\n\n  if (store.downAlerted) {\n    messages.push(`🟢 <b>Radar de volta</b>\\nListener respondendo de novo desde ${hhmm(now)}.`);\n  } else if (firstEver || restarted) {\n    messages.push(`🟢 <b>Radar online</b>\\nOuvindo ${beat.channels} canais desde ${hhmm(Date.parse(beat.started_at))}.`);\n  }\n\n  const lastMsg = beat.last_message_at ? Date.parse(beat.last_message_at) : null;\n  if (store.quietAlerted && lastMsg && lastMsg > store.quietAlertedAt) {\n    messages.push('🟢 <b>Posts voltaram a chegar</b> dos canais.');\n    store.quietAlerted = false;\n  }\n\n  store.lastBeatAt = now;\n  store.startedAt = beat.started_at;\n  store.lastMessageAt = lastMsg ?? store.lastMessageAt ?? Date.parse(beat.started_at);\n  store.connected = beat.connected;\n  store.downAlerted = false;\n  return messages;\n}\n\nfunction evaluate(store, now = Date.now()) {\n  const messages = [];\n  const previousCheck = store.lastCheckAt;\n  store.lastCheckAt = now;\n\n  if (!store.lastBeatAt) return messages;\n\n  // n8n também esteve fora (VM desligada, reboot): recomeça a contagem em vez\n  // de acusar o listener por um intervalo em que ninguém estava olhando\n  if (!previousCheck || now - previousCheck > 20 * 60000) {\n    store.lastBeatAt = Math.max(store.lastBeatAt, now);\n    store.lastMessageAt = Math.max(store.lastMessageAt || 0, now);\n    return messages;\n  }\n\n  const staleMin = (now - store.lastBeatAt) / 60000;\n  if (staleMin > STALE_MINUTES && !store.downAlerted) {\n    store.downAlerted = true;\n    messages.push(\n      `🔴 <b>Listener sem sinal há ${Math.round(staleMin)} min</b>\\n` +\n      'Nenhuma oferta está sendo lida. Verificar: <code>docker logs deal-radar-listener</code>'\n    );\n    return messages;\n  }\n\n  const hour = hourInTz(now);\n  const quietH = (now - (store.lastMessageAt || now)) / 3600000;\n  if (!store.downAlerted && !store.quietAlerted && hour >= ACTIVE_HOURS[0] && hour < ACTIVE_HOURS[1] && quietH > QUIET_HOURS) {\n    store.quietAlerted = true;\n    store.quietAlertedAt = now;\n    messages.push(\n      `🟡 <b>Nenhum post há ${Math.floor(quietH)}h</b>\\n` +\n      'O listener está vivo, mas os canais não mandaram nada. Pode ser sessão revogada ou canal parado.'\n    );\n  }\n  return messages;\n}\n\nif (typeof module !== 'undefined') module.exports = { onBeat, evaluate, hourInTz };\n\nif (typeof $input !== 'undefined') {\n  const store = $getWorkflowStaticData('global');\n  const texts = MODE === 'beat' ? onBeat(store, $input.first().json.body) : evaluate(store);\n  return texts.map((text) => ({ json: { text } }));\n}\n"
+      }
+    },
+    {
+      "id": "enviar-aviso",
+      "name": "Enviar aviso",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        310
+      ],
+      "parameters": {
+        "chatId": "<TELEGRAM_CHAT_ID>",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "<TELEGRAM_CRED_ID>",
+          "name": "<TELEGRAM_CRED_NAME>"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Batimento do listener": {
+      "main": [
+        [
+          {
+            "node": "Registrar batimento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar batimento": {
+      "main": [
+        [
+          {
+            "node": "Enviar aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A cada 5 minutos": {
+      "main": [
+        [
+          {
+            "node": "Avaliar saúde",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avaliar saúde": {
+      "main": [
+        [
+          {
+            "node": "Enviar aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataSuccessExecution": "none"
+  },
+  "tags": []
+}

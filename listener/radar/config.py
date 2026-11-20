@@ -13,5 +13,7 @@ CHANNEL_IDS = [int(c) for c in os.environ.get("TG_CHANNELS", "").split(",") if c
 
 WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "http://n8n:5678/webhook/deal-radar/ingest")
 WEBHOOK_TOKEN = os.environ.get("N8N_WEBHOOK_TOKEN", "")
+HEARTBEAT_URL = os.environ.get("N8N_HEARTBEAT_URL", "http://n8n:5678/webhook/deal-radar/heartbeat")
+HEARTBEAT_SECONDS = int(os.environ.get("HEARTBEAT_SECONDS", "300"))
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")

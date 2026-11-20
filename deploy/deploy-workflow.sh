@@ -16,7 +16,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 node "$ROOT/n8n/tests/run.mjs" > /dev/null || { echo "testes falharam, deploy abortado"; exit 1; }
 node "$ROOT/n8n/build-workflow.mjs"
-scp -q "$ROOT/n8n/workflows/deal-radar.json" "$HOST:deal-radar/deal-radar.json"
+ssh "$HOST" 'mkdir -p ~/deal-radar/workflows && rm -f ~/deal-radar/workflows/*.json'
+scp -q "$ROOT"/n8n/workflows/*.json "$HOST:deal-radar/workflows/"
 
 ssh "$HOST" 'bash -s' <<'REMOTE'
 set -euo pipefail
@@ -29,9 +30,12 @@ CRED=$(docker exec deal-radar-n8n node -e 'const t=require("/tmp/c.json").find(c
 docker exec deal-radar-n8n rm -f /tmp/c.json
 if [ -z "$CRED" ]; then echo "credencial Telegram API nao encontrada no n8n"; exit 1; fi
 CRED_ID=$(printf '%s' "$CRED" | cut -f1); CRED_NAME=$(printf '%s' "$CRED" | cut -f2)
-sed -e "s/<TELEGRAM_CHAT_ID>/$CHAT_ID/" -e "s/<TELEGRAM_CRED_ID>/$CRED_ID/" -e "s|<TELEGRAM_CRED_NAME>|$CRED_NAME|" deal-radar.json > /tmp/wf.json
-docker cp /tmp/wf.json deal-radar-n8n:/tmp/wf.json && rm /tmp/wf.json
-docker exec deal-radar-n8n sh -c 'n8n import:workflow --input=/tmp/wf.json && n8n publish:workflow --id=dealRadarMain001; rm /tmp/wf.json' 2>&1 | grep -v 'Error tracking'
+for f in workflows/*.json; do
+  WF_ID=$(grep -m1 '"id": "dealRadar' "$f" | sed 's/.*"id": "\([^"]*\)".*/\1/')
+  sed -e "s/<TELEGRAM_CHAT_ID>/$CHAT_ID/" -e "s/<TELEGRAM_CRED_ID>/$CRED_ID/" -e "s|<TELEGRAM_CRED_NAME>|$CRED_NAME|" "$f" > /tmp/wf.json
+  docker cp /tmp/wf.json deal-radar-n8n:/tmp/wf.json && rm /tmp/wf.json
+  docker exec deal-radar-n8n sh -c "n8n import:workflow --input=/tmp/wf.json && n8n publish:workflow --id=$WF_ID; rm /tmp/wf.json" 2>&1 | grep -vE 'Error tracking|deprecated|Note:|Please restart'
+done
 docker restart deal-radar-n8n > /dev/null
 for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:5680/healthz && break; sleep 2; done
 docker exec deal-radar-n8n n8n list:workflow --active=true 2>&1 | grep -v 'Error tracking'

@@ -99,6 +99,23 @@ Para registrar o script de logoff: `gpedit.msc` > *Configuração do Usuário* >
 Windows* > *Scripts (Logon/Logoff)* > *Fazer logoff* > aba *Scripts do PowerShell* > *Adicionar*, com
 o caminho completo de `stop-vm.ps1`.
 
+## Healthcheck
+
+O workflow *Deal Radar: saúde* avisa pelo mesmo bot:
+
+| Aviso | Quando |
+|---|---|
+| 🟢 Radar online | listener (re)iniciou e mandou o primeiro batimento |
+| 🔴 Listener sem sinal | mais de 15 min sem batimento (o listener manda um a cada 5 min) |
+| 🟢 Radar de volta | primeiro batimento depois de uma queda avisada |
+| 🟡 Nenhum post há Xh | listener vivo, mas 3 h sem posts entre 9h e 23h |
+
+Os limites ficam no topo de [`n8n/code/health.js`](../n8n/code/health.js). Quando o próprio n8n
+ficou fora (VM desligada), a primeira avaliação depois da volta só recalibra, sem acusar queda.
+
+O que o healthcheck não cobre: com a VM ou o n8n fora, não há quem avise. Nesse caso, a ausência
+do aviso "Radar online" depois de ligar o PC é o sinal.
+
 ## Como mudar regras
 
 ### Cadastrar ou ajustar um produto

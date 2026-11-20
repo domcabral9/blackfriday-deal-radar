@@ -80,6 +80,49 @@ const workflow = {
   tags: [],
 };
 
-const out = join(here, 'workflows', 'deal-radar.json');
-writeFileSync(out, JSON.stringify(workflow, null, 2) + '\n');
-console.log(`gerado: ${out}`);
+// Workflow de saúde: dois gatilhos (batimento do listener e relógio)
+// alimentando o mesmo static data, e um único nó de envio.
+const healthCode = (mode) => `const MODE = '${mode}';\n\n${code('health.js')}`;
+const at = (n, y) => ({ ...n, position: [n.position[0], y] });
+
+const healthNodes = [
+  at(node('Batimento do listener', 'n8n-nodes-base.webhook', 2, 0, {
+    httpMethod: 'POST',
+    path: 'deal-radar/heartbeat',
+    authentication: 'headerAuth',
+    options: {},
+  }, { webhookId: 'deal-radar-heartbeat', credentials: { httpHeaderAuth: CRED_WEBHOOK } }), 200),
+  at(node('Registrar batimento', 'n8n-nodes-base.code', 2, 240, { jsCode: healthCode('beat') }), 200),
+  at(node('A cada 5 minutos', 'n8n-nodes-base.scheduleTrigger', 1.2, 0, {
+    rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] },
+  }), 420),
+  at(node('Avaliar saúde', 'n8n-nodes-base.code', 2, 240, { jsCode: healthCode('check') }), 420),
+  at(node('Enviar aviso', 'n8n-nodes-base.telegram', 1.2, 500, {
+    chatId: '<TELEGRAM_CHAT_ID>',
+    text: '={{ $json.text }}',
+    additionalFields: { appendAttribution: false, parse_mode: 'HTML' },
+  }, { credentials: { telegramApi: CRED_TELEGRAM } }), 310),
+];
+
+const link = (to) => ({ main: [[{ node: to, type: 'main', index: 0 }]] });
+const health = {
+  id: 'dealRadarHealth1',
+  name: 'Deal Radar: saúde',
+  active: false,
+  nodes: healthNodes,
+  connections: {
+    'Batimento do listener': link('Registrar batimento'),
+    'Registrar batimento': link('Enviar aviso'),
+    'A cada 5 minutos': link('Avaliar saúde'),
+    'Avaliar saúde': link('Enviar aviso'),
+  },
+  // ~600 execuções por dia sem nada a avisar: guardar só as que falharem
+  settings: { executionOrder: 'v1', timezone: 'America/Sao_Paulo', saveDataSuccessExecution: 'none' },
+  tags: [],
+};
+
+for (const [file, wf] of [['deal-radar.json', workflow], ['deal-radar-health.json', health]]) {
+  const out = join(here, 'workflows', file);
+  writeFileSync(out, JSON.stringify(wf, null, 2) + '\n');
+  console.log(`gerado: ${out}`);
+}
