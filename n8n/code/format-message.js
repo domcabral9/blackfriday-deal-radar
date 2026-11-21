@@ -41,6 +41,7 @@ function formatAlert(offer, now = new Date()) {
   lines.push(`🎯 <b>${esc(main.label)}</b>`);
   if (others.length) lines.push(`<i>também: ${esc(others.map((p) => p.label).join(', '))}</i>`);
   if (offer.title) lines.push(esc(offer.title));
+  if (offer.ramWarning) lines.push(`⚠️ <i>${esc(offer.ramWarning)}</i>`);
   lines.push('');
 
   if (offer.price !== null) {

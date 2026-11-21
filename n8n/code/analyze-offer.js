@@ -142,6 +142,21 @@ function buildMatcher(product) {
   };
 }
 
+// RAM citada no post, em GB. Valores até 16 GB são RAM (armazenamento começa
+// em 64). Ignora RAM virtual pelo que vem depois do número ("8GB RAM Plus",
+// "16GB RAM Boost"). Um "+" antes do número não basta para descartar:
+// "256GB + 8GB de RAM" é RAM real.
+function ramMentions(norm) {
+  const found = [];
+  const re = /(?<![0-9])(\d{1,2})\s?gb(?!\s?(?:de\s)?ram\s?(?:plus|boost|virtual|extra))/g;
+  let m;
+  while ((m = re.exec(norm)) !== null) {
+    const v = parseInt(m[1], 10);
+    if (v >= 2 && v <= 16) found.push(v);
+  }
+  return [...new Set(found)];
+}
+
 function matchProducts(post, catalog) {
   const textNoPrices = (post.text || '').replace(/r\$\s*[\d.,]+/gi, ' ');
   const norm = normalize(textNoPrices);
@@ -151,6 +166,12 @@ function matchProducts(post, catalog) {
     if (!m.model.test(norm)) return false;
     if (!m.requireAll.every((r) => r.test(norm))) return false;
     if (m.excludeAny.some((r) => r.test(norm))) return false;
+    // RAM exigida: descarta só quando o post cita outra; sem citação, passa
+    // e o alerta avisa para conferir
+    if (p.ram) {
+      const rams = ramMentions(norm);
+      if (rams.length && !rams.includes(p.ram)) return false;
+    }
     if (m.size && !m.size.test(norm)) return false;
     return true;
   });
@@ -194,6 +215,9 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
     status: 'alerta',
     products: matched.map((p) => ({ id: p.id, label: p.label })),
     highlight: Boolean(primary.highlight),
+    ramWarning: primary.ram && !ramMentions(normalize(post.text.replace(/r\$\s*[\d.,]+/gi, ' '))).length
+      ? `RAM não informada no post: confira se é ${primary.ram} GB`
+      : null,
     refPrice: primary.refPrice || null,
     price,
     installment,
@@ -209,7 +233,7 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { stripInvisible, normalize,parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
+  module.exports = { stripInvisible, normalize, ramMentions, parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
 }
 
 if (typeof $input !== 'undefined') {

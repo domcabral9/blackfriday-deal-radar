@@ -225,9 +225,31 @@
     "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 1199, "highlight": true, "refPrice": [1300, 1600] }
   },
   {
-    "name": "Galaxy A17 256 GB sem citar 5G também entra",
+    "name": "Real (Rodrigo, 12/11): A17 8GB 256GB com '+ 8GB de RAM'",
+    "post": {
+      "text": "Versão de 256GB + 8GB de RAM 🔥️\n\n‼️Samsung Galaxy A17 8GB 256GB\n\nSaindo a R$ 930 no pix\n\n🤑️Use o cupom SAMSUNG10OFF ou resgate ele no anúncio se aparecer pra você\n\n🔗https://meli.la/15xa6rL"
+    },
+    "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 930, "coupon": "SAMSUNG10OFF", "offerUrl": "https://meli.la/15xa6rL", "title": "Samsung Galaxy A17 8GB 256GB", "ramWarning": null }
+  },
+  {
+    "name": "Galaxy A17 256 GB sem citar RAM entra com aviso",
     "post": { "text": "Samsung Galaxy A17 (256GB) Azul Escuro\nR$ 1.399" },
-    "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 1399 }
+    "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 1399, "ramWarning": "RAM não informada no post: confira se é 8 GB" }
+  },
+  {
+    "name": "Galaxy A17 256 GB com 6 GB de RAM é descartado",
+    "post": { "text": "Samsung Galaxy A17 5G 6GB RAM 256GB\nR$ 1.199" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "RAM Plus virtual não conta como RAM real",
+    "post": { "text": "Samsung Galaxy A17 5G 256GB 8GB RAM + 8GB RAM Plus\nR$ 1.299" },
+    "expect": { "status": "alerta", "product": "galaxy-a17-256", "ramWarning": null }
+  },
+  {
+    "name": "Só RAM Plus citada vale como RAM não informada",
+    "post": { "text": "Samsung Galaxy A17 256GB com até 16GB RAM Boost\nR$ 1.299" },
+    "expect": { "status": "alerta", "ramWarning": "RAM não informada no post: confira se é 8 GB" }
   },
   {
     "name": "Galaxy A17 de 128 GB é descartado",

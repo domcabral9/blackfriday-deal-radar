@@ -77,6 +77,8 @@ const catalog = [
     requireAll: ['galaxy|samsung', '\\b256\\s?(gb|g)\\b'],
     // A versão de 256 GB é 5G; post que diga 4G é outro aparelho
     excludeAny: ['(?<![a-z0-9])4g(?![a-z0-9])'],
+    // Post que cita outra RAM é descartado; sem citação, alerta com aviso
+    ram: 8,
     minPrice: 900,
     maxPrice: 1600,
     refPrice: [1300, 1600],
