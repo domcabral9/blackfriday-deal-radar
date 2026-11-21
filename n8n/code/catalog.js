@@ -68,13 +68,29 @@ const catalog = [
   },
   // Lote de 21/11. Tetos calibrados pelos preços vistos nos canais em
   // novembro; minPrice separa o produto de capas, suportes e acessórios.
+  // Compras planejadas (21/11): highlight marca o alerta e refPrice é a faixa
+  // de preço pesquisada fora dos canais, usada para dizer se a oferta é boa.
   {
-    id: 'galaxy-a17-5g',
-    label: 'Samsung Galaxy A17 5G',
+    id: 'galaxy-a17-256',
+    label: 'Samsung Galaxy A17 256 GB',
     model: 'a\\s?17',
-    requireAll: ['galaxy|samsung', '(?<![a-z0-9])5g(?![a-z0-9])'],
-    minPrice: 500,
-    maxPrice: 1300,
+    requireAll: ['galaxy|samsung', '\\b256\\s?(gb|g)\\b'],
+    // A versão de 256 GB é 5G; post que diga 4G é outro aparelho
+    excludeAny: ['(?<![a-z0-9])4g(?![a-z0-9])'],
+    minPrice: 900,
+    maxPrice: 1600,
+    refPrice: [1300, 1600],
+    highlight: true,
+  },
+  {
+    id: 'galaxy-a07-128',
+    label: 'Samsung Galaxy A07 128 GB',
+    model: 'a\\s?07',
+    requireAll: ['galaxy|samsung', '\\b128\\s?(gb|g)\\b'],
+    minPrice: 400,
+    maxPrice: 800,
+    refPrice: [600, 800],
+    highlight: true,
   },
   {
     id: 'echo-dot',

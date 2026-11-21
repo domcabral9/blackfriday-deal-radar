@@ -193,6 +193,8 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
   return {
     status: 'alerta',
     products: matched.map((p) => ({ id: p.id, label: p.label })),
+    highlight: Boolean(primary.highlight),
+    refPrice: primary.refPrice || null,
     price,
     installment,
     coupon: extractCoupon(post),

@@ -19,9 +19,22 @@ function stamp(date) {
   }).format(date).replace(',', '');
 }
 
+// Compara com a faixa pesquisada fora dos canais: diz se é oferta de verdade
+function refPriceLine(price, refPrice) {
+  if (!Array.isArray(refPrice) || refPrice.length !== 2) return null;
+  const [low, high] = refPrice;
+  const range = `${brl(low).replace(/,00$/, '')} a ${brl(high).replace(/,00$/, '')}`;
+  if (price < low) {
+    const pct = Math.round((1 - price / low) * 100);
+    return `📊 <b>${pct}% abaixo</b> da sua faixa (${range}) 🔥`;
+  }
+  return `📊 Dentro da sua faixa (${range})`;
+}
+
 function formatAlert(offer, now = new Date()) {
   const [main, ...others] = offer.products;
   const lines = [];
+  if (offer.highlight) lines.push('⭐⭐ <b>COMPRA PLANEJADA</b> ⭐⭐');
   if (offer.retro && offer.postedAt) {
     lines.push(`⏪ <i>Retroativo: postado em ${stamp(Date.parse(offer.postedAt))}, pode ter esgotado</i>`);
   }
@@ -39,6 +52,8 @@ function formatAlert(offer, now = new Date()) {
       priceLine += ` em ${inst.times}x de ${brl(inst.each)}`;
     }
     lines.push(priceLine);
+    const ref = refPriceLine(offer.price, offer.refPrice);
+    if (ref) lines.push(ref);
   } else {
     lines.push('💰 <i>preço não identificado no post</i>');
   }
@@ -55,7 +70,7 @@ function formatAlert(offer, now = new Date()) {
   };
 }
 
-if (typeof module !== 'undefined') module.exports = { formatAlert, esc, brl, stamp };
+if (typeof module !== 'undefined') module.exports = { formatAlert, refPriceLine, esc, brl, stamp };
 
 if (typeof $input !== 'undefined') {
   return $input.all().map((item) => ({ json: { ...item.json, ...formatAlert(item.json) } }));

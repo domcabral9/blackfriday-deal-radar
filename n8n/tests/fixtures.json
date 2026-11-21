@@ -220,14 +220,49 @@
     "expect": { "status": "acessorio" }
   },
   {
-    "name": "Galaxy A17 5G entra",
+    "name": "Galaxy A17 256 GB entra com destaque e faixa pesquisada",
+    "post": { "text": "📱 Smartphone Samsung Galaxy A17 5G 256GB 8GB RAM NFC Preto\n\n💰 R$ 1.199 no Pix" },
+    "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 1199, "highlight": true, "refPrice": [1300, 1600] }
+  },
+  {
+    "name": "Galaxy A17 256 GB sem citar 5G também entra",
+    "post": { "text": "Samsung Galaxy A17 (256GB) Azul Escuro\nR$ 1.399" },
+    "expect": { "status": "alerta", "product": "galaxy-a17-256", "price": 1399 }
+  },
+  {
+    "name": "Galaxy A17 de 128 GB é descartado",
     "post": { "text": "Samsung Galaxy A17 5G 128GB Preto\nR$ 1.099" },
-    "expect": { "status": "alerta", "product": "galaxy-a17-5g", "price": 1099 }
+    "expect": { "status": "sem_produto" }
   },
   {
     "name": "Galaxy A17 4G é descartado",
-    "post": { "text": "Samsung Galaxy A17 4G 128GB\nR$ 899" },
+    "post": { "text": "Samsung Galaxy A17 4G 256GB\nR$ 1.099" },
     "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Galaxy A17 256 GB acima de R$ 1.600 é descartado",
+    "post": { "text": "Samsung Galaxy A17 5G 256GB\nR$ 1.799" },
+    "expect": { "status": "acima_do_teto", "price": 1799 }
+  },
+  {
+    "name": "Galaxy A07 128 GB 4G entra com destaque",
+    "post": { "text": "Celular Samsung Galaxy A07 4G 128GB 4GB RAM Preto\nR$ 649" },
+    "expect": { "status": "alerta", "product": "galaxy-a07-128", "price": 649, "highlight": true }
+  },
+  {
+    "name": "Galaxy A07 5G 128 GB também entra",
+    "post": { "text": "Samsung Galaxy A07 5G 128GB Verde Claro\nR$ 799" },
+    "expect": { "status": "alerta", "product": "galaxy-a07-128" }
+  },
+  {
+    "name": "Galaxy A07 de 64 GB é descartado",
+    "post": { "text": "Samsung Galaxy A07 4G 64GB\nR$ 549" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Capa de Galaxy A07 é acessório",
+    "post": { "text": "Capa Anti Impacto para Galaxy A07 128GB\nR$ 29,90" },
+    "expect": { "status": "acessorio" }
   },
   {
     "name": "Real: Kindle básico",
