@@ -88,6 +88,10 @@ O radar só funciona com a VM ligada, e a VM roda no PC pessoal. Dois scripts em
 | Logon | `start-vm.ps1`: liga a VM headless e espera o SSH | tarefa agendada *DealRadar - Ligar VM* (45 s de atraso) |
 | Logoff, desligar ou reiniciar | `stop-vm.ps1`: botão ACPI, com *savestate* se passar de 60 s | script de logoff via `gpedit.msc` |
 
+As tarefas chamam `conhost.exe --headless powershell.exe ... -File <script>`. Com `powershell.exe`
+direto, mesmo com `-WindowStyle Hidden`, uma janela pisca na tela a cada execução, o que incomoda no
+watchdog de 5 em 5 minutos.
+
 Dentro da VM, nada precisa ser feito: o Docker sobe no boot e os containers têm
 `restart: unless-stopped`. Ciclo medido: desligamento limpo em cerca de 13 s, SSH de volta em
 cerca de 45 s, listener reconectado logo em seguida.
