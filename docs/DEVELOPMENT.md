@@ -85,7 +85,8 @@ O radar só funciona com a VM ligada, e a VM roda no PC pessoal. Dois scripts em
 
 | Momento | Script | Como é disparado |
 |---|---|---|
-| Logon | `start-vm.ps1`: liga a VM headless e espera o SSH | tarefa agendada *DealRadar - Ligar VM* (45 s de atraso) |
+| Boot do Windows, sem login | autostart oficial do VirtualBox (`autostart-enabled=on`, atraso de 30 s) | serviço instalado por `install-autostart.ps1` (admin, uma vez) |
+| Logon | `start-vm.ps1`: liga a VM se ainda estiver parada e espera o SSH | tarefa agendada *DealRadar - Ligar VM* (45 s de atraso) |
 | Logoff, desligar ou reiniciar | `stop-vm.ps1`: botão ACPI, com *savestate* se passar de 60 s | script de logoff via `gpedit.msc` |
 
 As tarefas chamam `conhost.exe --headless powershell.exe ... -File <script>`. Com `powershell.exe`
