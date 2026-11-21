@@ -162,6 +162,34 @@
     "expect": { "status": "alerta", "product": "iphone-16e" }
   },
   {
+    "name": "Retroativo: post da madrugada recuperado vira alerta marcado",
+    "settings": { "maxAgeMinutes": 60, "maxReplayHours": 16 },
+    "now": "2026-11-27T12:30:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T05:10:00+00:00", "replay": true },
+    "expect": { "status": "alerta", "product": "iphone-16e", "retro": true }
+  },
+  {
+    "name": "Retroativo além de 16h é descartado",
+    "settings": { "maxAgeMinutes": 60, "maxReplayHours": 16 },
+    "now": "2026-11-27T12:30:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-26T18:00:00+00:00", "replay": true },
+    "expect": { "status": "antigo" }
+  },
+  {
+    "name": "Post velho sem marca de replay continua descartado",
+    "settings": { "maxAgeMinutes": 60, "maxReplayHours": 16 },
+    "now": "2026-11-27T12:30:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T05:10:00+00:00" },
+    "expect": { "status": "antigo" }
+  },
+  {
+    "name": "Recuperado com poucos minutos de atraso é alerta normal",
+    "settings": { "maxAgeMinutes": 60, "maxReplayHours": 16 },
+    "now": "2026-11-27T12:30:00Z",
+    "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T12:27:00+00:00", "replay": true },
+    "expect": { "status": "alerta", "retro": false }
+  },
+  {
     "name": "Link do próprio Telegram não vira link da oferta",
     "post": { "text": "iPhone 16e 128GB R$ 3.299", "urls": ["https://t.me/canal", "https://amzn.to/zz"] },
     "expect": { "offerUrl": "https://amzn.to/zz" }

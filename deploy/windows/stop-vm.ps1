@@ -23,10 +23,15 @@ function Get-VmState {
     ($info | Select-String '^VMState="(.+)"').Matches.Groups[1].Value
 }
 
-if ((Get-VmState) -ne 'running') {
-    Write-Log "VM nao estava rodando"
+# Durante o logoff, o servico do VirtualBox pode estar encerrando e a leitura
+# do estado vir vazia. So desiste quando o estado diz claramente que a VM esta
+# parada; qualquer outra coisa tenta o desligamento limpo.
+$state = Get-VmState
+if ($state -in @('poweroff', 'saved', 'aborted')) {
+    Write-Log "VM ja estava parada ($state)"
     exit 0
 }
+Write-Log "estado lido: '$state'"
 
 Write-Log "enviando ACPI power button"
 & $VBox controlvm $VmName acpipowerbutton 2>&1 | Out-Null

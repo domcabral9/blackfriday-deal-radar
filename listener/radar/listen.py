@@ -1,5 +1,12 @@
 """Servico principal: escuta os canais e repassa cada post para o webhook do n8n.
 
+Dois caminhos levam um post ao n8n, e os dois passam por process():
+  - ao vivo: evento NewMessage do Telegram;
+  - reconciliacao: a cada RECONCILE_SECONDS, o listener pede ao Telegram os
+    posts com ID acima do cursor salvo. Cobre PC desligado a noite, VM
+    restaurada de "saved", queda de rede e restart. Esses posts vao marcados
+    com replay=True, e o n8n decide se ainda valem como alerta retroativo.
+
 Cada mensagem tambem vai para /data/messages.jsonl, que serve de trilha de
 auditoria e de massa de teste. Se o n8n estiver fora, a mensagem vai para
 /data/failed.jsonl depois das tentativas, para reprocessar depois.
@@ -14,7 +21,7 @@ from datetime import datetime, timezone
 import httpx
 from telethon import TelegramClient, events
 
-from . import config
+from . import config, cursor as cursor_store
 from .extract import build_payload
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
@@ -97,28 +104,72 @@ async def main() -> None:
     if not config.CHANNEL_IDS:
         raise SystemExit("TG_CHANNELS vazio: rode radar.login e preencha o .env")
 
-    # catch_up recupera mensagens publicadas enquanto o listener estava fora
-    client = TelegramClient(
-        config.SESSION_PATH, config.API_ID, config.API_HASH, catch_up=True
-    )
+    # Sem catch_up do Telethon: a recuperacao fica toda na reconciliacao, que
+    # tem cursor proprio e marca o que chegou atrasado
+    client = TelegramClient(config.SESSION_PATH, config.API_ID, config.API_HASH)
     http = httpx.AsyncClient(timeout=15)
+    cursor = cursor_store.Cursor()
+    lock = asyncio.Lock()
 
-    @client.on(events.NewMessage(chats=config.CHANNEL_IDS))
-    async def on_message(event):
-        if not event.message.message:
+    async def process(message, chat, replay: bool) -> None:
+        if not message.message:
             return
-        chat = await event.get_chat()
-        payload = build_payload(event.message, chat)
+        async with lock:
+            # Ao vivo e reconciliacao podem ver o mesmo post
+            if cursor.is_seen(chat.id, message.id):
+                return
+            cursor.mark_seen(chat.id, message.id)
+            cursor.save()
+        payload = build_payload(message, chat)
+        payload["replay"] = replay
         STATE["last_message_at"] = datetime.now(timezone.utc).isoformat()
         STATE["messages_since_start"] += 1
         append_jsonl("messages.jsonl", payload)
-        log.info("[%s] %s", payload["source"]["title"], payload["text"][:80].replace("\n", " "))
+        tag = "recuperado " if replay else ""
+        log.info("%s[%s] %s", tag, payload["source"]["title"], payload["text"][:80].replace("\n", " "))
         await forward(http, payload)
+
+    @client.on(events.NewMessage(chats=config.CHANNEL_IDS))
+    async def on_message(event):
+        await process(event.message, await event.get_chat(), replay=False)
+
+    async def reconcile() -> None:
+        for channel_id in config.CHANNEL_IDS:
+            chat = await client.get_entity(channel_id)
+            last = cursor.watermark.get(chat.id)
+            if last is None:
+                # Primeira execucao: marca a posicao atual sem inundar o bot
+                latest = await client.get_messages(chat, limit=1)
+                async with lock:
+                    cursor.watermark[chat.id] = latest[0].id if latest else 0
+                    cursor.save()
+                log.info("cursor iniciado em %s: %s", chat.title, cursor.watermark[chat.id])
+                continue
+            fetched = [m async for m in client.iter_messages(
+                chat, min_id=last, reverse=True, limit=config.RECONCILE_LIMIT)]
+            missed = [m for m in fetched if m.message and not cursor.is_seen(chat.id, m.id)]
+            if missed:
+                log.info("reconciliacao: %d post(s) perdido(s) em %s", len(missed), chat.title)
+            for message in missed:
+                await process(message, chat, replay=True)
+            if fetched:
+                async with lock:
+                    cursor.watermark[chat.id] = max(m.id for m in fetched)
+                    cursor.save()
+
+    async def reconcile_loop() -> None:
+        while True:
+            try:
+                await reconcile()
+            except Exception as exc:  # rede instavel nao pode matar o loop
+                log.warning("reconciliacao falhou: %s", exc)
+            await asyncio.sleep(config.RECONCILE_SECONDS)
 
     await wait_for_n8n(http)
     await client.start()
     log.info("escutando %d canais", len(config.CHANNEL_IDS))
     beat_task = asyncio.create_task(heartbeat_loop(client, http))
+    reconcile_task = asyncio.create_task(reconcile_loop())
 
     waiters = [asyncio.create_task(client.run_until_disconnected())]
     bot = await start_bot(http)
@@ -129,6 +180,7 @@ async def main() -> None:
     # sobe outro; o heartbeat para no meio tempo e o n8n percebe.
     await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
     beat_task.cancel()
+    reconcile_task.cancel()
 
 
 async def start_bot(http: httpx.AsyncClient):

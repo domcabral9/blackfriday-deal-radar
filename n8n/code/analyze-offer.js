@@ -164,8 +164,10 @@ function ageMinutes(post, now) {
 function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
   const post = { ...rawPost, text: stripInvisible(rawPost.text), codes: (rawPost.codes || []).map(stripInvisible) };
   const maxAge = settings.maxAgeMinutes ?? Infinity;
+  const maxReplay = (settings.maxReplayHours ?? 0) * 60;
   const age = ageMinutes(post, now);
-  if (age > maxAge) return { status: 'antigo', ageMinutes: Math.round(age) };
+  const retro = age > maxAge;
+  if (retro && !(post.replay && age <= maxReplay)) return { status: 'antigo', ageMinutes: Math.round(age) };
 
   const matched = matchProducts(post, catalog);
   if (!matched.length) return { status: 'sem_produto' };
@@ -200,6 +202,7 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
     postUrl: post.post_url,
     postedAt: post.posted_at,
     messageId: post.message_id,
+    retro,
   };
 }
 

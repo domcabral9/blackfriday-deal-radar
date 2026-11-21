@@ -16,6 +16,11 @@ WEBHOOK_TOKEN = os.environ.get("N8N_WEBHOOK_TOKEN", "")
 HEARTBEAT_URL = os.environ.get("N8N_HEARTBEAT_URL", "http://n8n:5678/webhook/deal-radar/heartbeat")
 HEARTBEAT_SECONDS = int(os.environ.get("HEARTBEAT_SECONDS", "300"))
 
+# A cada quantos segundos o listener confere no Telegram se perdeu algum post
+RECONCILE_SECONDS = int(os.environ.get("RECONCILE_SECONDS", "120"))
+# Limite de posts recuperados por canal numa unica reconciliacao
+RECONCILE_LIMIT = int(os.environ.get("RECONCILE_LIMIT", "500"))
+
 # Bot de comandos (opcional). Recebe /comandos via MTProto, sem precisar de
 # URL publica, e repassa ao n8n. So mensagens do dono sao aceitas.
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")

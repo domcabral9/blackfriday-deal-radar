@@ -72,6 +72,10 @@ const settings = {
   // Posts publicados há mais tempo que isso são ignorados. Evita alerta de
   // oferta velha quando o listener volta de uma queda e recupera o atraso.
   maxAgeMinutes: 60,
+  // Posts recuperados pela reconciliação do listener (PC desligado à noite,
+  // VM restaurada) passam do corte acima até este limite e chegam marcados
+  // como retroativos.
+  maxReplayHours: 16,
 };
 
 // Alterações feitas pelo bot (/pausar, /teto, /add) ficam no static data

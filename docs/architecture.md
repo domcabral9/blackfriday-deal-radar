@@ -38,10 +38,25 @@ O listener foi mantido propositalmente simples: escuta só os canais cadastrados
 post em JSON (texto, links escondidos em texto, botões, trechos formatados como código) e entrega
 ao n8n. Decidir se a oferta interessa é tarefa do workflow, onde a regra fica visível e editável.
 
-`catch_up=True` faz o Telethon pedir ao Telegram as mensagens publicadas enquanto o listener estava
-fora. Numa reinicialização curta da VM, os alertas chegam atrasados em vez de se perderem. Em
-quedas longas, o Telegram pode limitar a recuperação, e a fonte de verdade passa a ser o
-histórico do canal (`radar.backfill`).
+## Recuperação do que foi perdido (retroativo)
+
+O PC fica desligado à noite, e a VM às vezes volta de um estado salvo ou de um reset. A
+recuperação não depende do `catch_up` do Telethon, que tem limites do lado do Telegram e não diz
+quais posts chegaram atrasados. O listener mantém um estado próprio por canal em
+`/data/cursor.json`:
+
+| Campo | Quem avança | Para quê |
+|---|---|---|
+| `watermark` | só a reconciliação | ID até onde o canal já foi varrido |
+| `seen` | ao vivo e reconciliação | IDs já entregues, para não duplicar |
+
+A cada 2 minutos, e logo ao subir, a reconciliação pede ao Telegram os posts acima da
+`watermark`, entrega os que não estão em `seen` com `replay: true` e só então avança a marca. Se o
+ao vivo pudesse avançar a marca, um post novo chegando logo depois de uma reconexão empurraria a
+marca para cima, e o intervalo perdido ficaria esquecido abaixo dela.
+
+No n8n, um post com mais de 60 minutos é descartado, a menos que venha com `replay: true` e tenha
+até 16 horas. Nesse caso vira alerta com a marca "⏪ Retroativo: postado em ..., pode ter esgotado".
 
 ## Por que uma instância n8n dedicada
 

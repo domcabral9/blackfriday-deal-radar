@@ -21,7 +21,11 @@ function stamp(date) {
 
 function formatAlert(offer, now = new Date()) {
   const [main, ...others] = offer.products;
-  const lines = [`🎯 <b>${esc(main.label)}</b>`];
+  const lines = [];
+  if (offer.retro && offer.postedAt) {
+    lines.push(`⏪ <i>Retroativo: postado em ${stamp(Date.parse(offer.postedAt))}, pode ter esgotado</i>`);
+  }
+  lines.push(`🎯 <b>${esc(main.label)}</b>`);
   if (others.length) lines.push(`<i>também: ${esc(others.map((p) => p.label).join(', '))}</i>`);
   if (offer.title) lines.push(esc(offer.title));
   lines.push('');
