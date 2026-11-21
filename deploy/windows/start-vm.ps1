@@ -27,6 +27,15 @@ if ($state -eq 'running') {
 Write-Log "estado anterior: $state; ligando"
 & $VBox startvm $VmName --type headless 2>&1 | ForEach-Object { Write-Log $_ }
 
+# Um estado salvo no meio de um desligamento termina de desligar logo depois
+# de restaurado. Se a VM cair nos primeiros segundos, liga de novo (boot limpo).
+Start-Sleep -Seconds 20
+$after = ((& $VBox showvminfo $VmName --machinereadable 2>&1) | Select-String '^VMState="(.+)"').Matches.Groups[1].Value
+if ($after -eq 'poweroff') {
+    Write-Log "VM desligou logo apos restaurar (estado salvo no meio de um desligamento); ligando de novo"
+    & $VBox startvm $VmName --type headless 2>&1 | ForEach-Object { Write-Log $_ }
+}
+
 # Espera o SSH responder e registra o estado dos containers
 for ($i = 0; $i -lt 36; $i++) {
     Start-Sleep -Seconds 5

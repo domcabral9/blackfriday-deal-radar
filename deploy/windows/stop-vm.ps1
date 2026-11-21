@@ -6,7 +6,11 @@
 
 param(
     [string]$VmName = 'n8n',
-    [int]$TimeoutSeconds = 60
+    # Com o VirtualBox sobre o Hyper-V, o Ubuntu ja levou mais de 60 s para
+    # desligar. Salvar o estado no meio do desligamento faz a VM terminar de
+    # desligar logo depois de restaurada. O Windows espera ate 10 min por
+    # scripts de logoff.
+    [int]$TimeoutSeconds = 240
 )
 
 $VBox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
