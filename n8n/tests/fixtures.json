@@ -113,7 +113,7 @@
   },
   {
     "name": "Post sem produto-alvo",
-    "post": { "text": "Air Fryer Mondial 4L\nR$ 249,90" },
+    "post": { "text": "Panela Elétrica de Arroz Mondial 5 xícaras\nR$ 149,90" },
     "expect": { "status": "sem_produto" }
   },
   {
@@ -188,6 +188,71 @@
     "now": "2026-11-27T12:30:00Z",
     "post": { "text": "iPhone 16e 128GB R$ 3.299", "posted_at": "2026-11-27T12:27:00+00:00", "replay": true },
     "expect": { "status": "alerta", "retro": false }
+  },
+  {
+    "name": "Real (VRL): Echo Dot geração mais recente",
+    "post": { "text": "🔥 Echo Dot (Geração mais recente) com Acesso Antecipado à Alexa+ | De R$649,00 Por R$ 289,00" },
+    "expect": { "status": "alerta", "product": "echo-dot", "price": 289 }
+  },
+  {
+    "name": "Real (Rodrigo): Echo Dot 5ª geração com caracteres invisíveis",
+    "post": { "text": "🖥️ Ama⁠zon Echo Dot 5 Al⁠exa 5ª Gera⁠ção, Smart speaker com Alexa\n\n💰 R$ 289 em 10x sem juros" },
+    "expect": { "status": "alerta", "product": "echo-dot", "price": 289 }
+  },
+  {
+    "name": "Echo Dot Max é descartado",
+    "post": { "text": "🖥️ Echo Dot Max (Geração mais recente)\n\n💰 R$ 599" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Echo Spot não é Echo Dot",
+    "post": { "text": "Echo Spot com Alexa | De R$499,99 Por R$ 368,10 (no Pix)" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Echo Dot de 4ª geração é descartado",
+    "post": { "text": "Echo Dot 4ª Geração Smart Speaker | Por R$ 199,00" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Suporte para Echo Dot é acessório",
+    "post": { "text": "Suporte de parede para Echo Dot 5ª geração\nR$ 39,90" },
+    "expect": { "status": "acessorio" }
+  },
+  {
+    "name": "Galaxy A17 5G entra",
+    "post": { "text": "Samsung Galaxy A17 5G 128GB Preto\nR$ 1.099" },
+    "expect": { "status": "alerta", "product": "galaxy-a17-5g", "price": 1099 }
+  },
+  {
+    "name": "Galaxy A17 4G é descartado",
+    "post": { "text": "Samsung Galaxy A17 4G 128GB\nR$ 899" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Real: Kindle básico",
+    "post": { "text": "📖 Kindle 16 GB (Geração mais recente) VERDE ou PRETO\n\n💰 R$ 519" },
+    "expect": { "status": "alerta", "product": "kindle", "price": 519 }
+  },
+  {
+    "name": "Capa de Kindle é acessório",
+    "post": { "text": "Capa para Kindle Paperwhite 12ª geração\nR$ 59,90" },
+    "expect": { "status": "acessorio" }
+  },
+  {
+    "name": "Real: Air Fryer Philco",
+    "post": { "text": "‼️Air Fryer Philco 9,5L Visor Glass Redstone 1800W PAF95A 220V\n\n💰 R$ 326" },
+    "expect": { "status": "alerta", "product": "airfryer", "price": 326 }
+  },
+  {
+    "name": "Papel para air fryer é acessório",
+    "post": { "text": "Papel Manteiga Descartável para Air Fryer 100 un\nR$ 29,90" },
+    "expect": { "status": "acessorio" }
+  },
+  {
+    "name": "Real: Mochila HP",
+    "post": { "text": "🎒 Mochila HP Travel 18L - para Notebook de até 15,6 Polegadas\n\n💰 R$ 135" },
+    "expect": { "status": "alerta", "product": "mochila", "price": 135 }
   },
   {
     "name": "Link do próprio Telegram não vira link da oferta",

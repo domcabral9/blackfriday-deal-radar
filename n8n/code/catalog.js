@@ -66,6 +66,48 @@ const catalog = [
     requireAll: ['galaxy|samsung', '\\b256\\s?(gb|g)\\b'],
     ...PHONE,
   },
+  // Lote de 21/11. Tetos calibrados pelos preços vistos nos canais em
+  // novembro; minPrice separa o produto de capas, suportes e acessórios.
+  {
+    id: 'galaxy-a17-5g',
+    label: 'Samsung Galaxy A17 5G',
+    model: 'a\\s?17',
+    requireAll: ['galaxy|samsung', '(?<![a-z0-9])5g(?![a-z0-9])'],
+    minPrice: 500,
+    maxPrice: 1300,
+  },
+  {
+    id: 'echo-dot',
+    label: 'Echo Dot (5ª geração ou mais recente)',
+    model: 'echo\\s?dot',
+    excludeAfter: ['max'],
+    // Muitos posts não citam a geração; exclui só as antigas quando citadas
+    excludeAny: ['(?<![a-z0-9])[1-4]\\s?a?\\s?geracao'],
+    minPrice: 150,
+    maxPrice: 300,
+  },
+  {
+    id: 'kindle',
+    label: 'Kindle',
+    model: 'kindle',
+    minPrice: 300,
+    maxPrice: 800,
+  },
+  {
+    id: 'airfryer',
+    label: 'Air Fryer',
+    model: 'air\\s?fryer|fritadeira\\s(?:eletrica|sem oleo)',
+    // Air fryer pequena sai por ~R$ 116; papel e forma custam R$ 30 a 40
+    minPrice: 80,
+    maxPrice: 450,
+  },
+  {
+    id: 'mochila',
+    label: 'Mochila',
+    model: 'mochila',
+    minPrice: 50,
+    maxPrice: 300,
+  },
 ].map((p) => ({ active: true, ...p }));
 
 const settings = {
