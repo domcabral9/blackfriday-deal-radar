@@ -27,6 +27,14 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     mem_limit: 1g
+    # O listener so sobe com o n8n respondendo: depois de uma queda, ele
+    # entrega de uma vez os posts recuperados e nao pode bater em porta fechada
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   listener:
     build: ../listener
@@ -34,7 +42,8 @@ services:
     container_name: deal-radar-listener
     restart: unless-stopped
     depends_on:
-      - n8n
+      n8n:
+        condition: service_healthy
     environment:
       TG_API_ID: ${TG_API_ID}
       TG_API_HASH: ${TG_API_HASH}

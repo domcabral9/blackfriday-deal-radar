@@ -71,6 +71,28 @@ async def heartbeat_loop(client: TelegramClient, http: httpx.AsyncClient) -> Non
         await asyncio.sleep(delay)
 
 
+async def wait_for_n8n(http: httpx.AsyncClient, max_seconds: int = 600) -> None:
+    """Segura a conexao com o Telegram ate o n8n responder.
+
+    Num reboot da VM, o Docker sobe os containers pela politica de restart e
+    ignora o depends_on do Compose. Sem esta espera, os posts recuperados pelo
+    catch_up chegam antes do n8n estar no ar.
+    """
+    health = config.WEBHOOK_URL.split("/webhook/")[0] + "/healthz"
+    waited = 0
+    while waited < max_seconds:
+        try:
+            if (await http.get(health)).status_code == 200:
+                if waited:
+                    log.info("n8n pronto depois de %ds", waited)
+                return
+        except httpx.HTTPError:
+            pass
+        await asyncio.sleep(5)
+        waited += 5
+    log.warning("n8n nao respondeu em %ds; seguindo mesmo assim", max_seconds)
+
+
 async def main() -> None:
     if not config.CHANNEL_IDS:
         raise SystemExit("TG_CHANNELS vazio: rode radar.login e preencha o .env")
@@ -93,6 +115,7 @@ async def main() -> None:
         log.info("[%s] %s", payload["source"]["title"], payload["text"][:80].replace("\n", " "))
         await forward(http, payload)
 
+    await wait_for_n8n(http)
     await client.start()
     log.info("escutando %d canais", len(config.CHANNEL_IDS))
     beat_task = asyncio.create_task(heartbeat_loop(client, http))

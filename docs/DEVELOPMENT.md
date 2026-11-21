@@ -195,3 +195,42 @@ coisas em sequência.
 
 O dedup guarda as ofertas vistas no *static data* do workflow, que o n8n só persiste em execuções de
 produção. Testando pelo botão *Execute workflow*, toda oferta parece nova.
+
+### VM congelada pelo host trava o disco em somente leitura
+
+Incidente real (20/11, 20:09): o radar parou por uma hora sem nenhum aviso. O kernel da VM
+registrou uma gravação em disco expirando depois de 301 s (`sd ... DID_TIME_OUT`, `I/O error`),
+seguida de `Aborting journal` e remontagem do `/` como somente leitura. Com o disco travado, n8n e
+listener param juntos, e o healthcheck interno não tem como avisar.
+
+Causa raiz: a VM ficou ~216 s sem CPU. O `VBox.log` mostra o VirtualBox em modo NEM
+(`HM: HMR3Init: Attempting fall back to NEM: VT-x is not available`), rodando sobre o Hyper-V
+porque o Windows está com Isolamento de Núcleo / Integridade de Memória (VBS/HVCI) ativo. Nesse
+modo, congelamentos longos são recorrentes: foram 11 entre 80 e 496 s em menos de 3 horas
+(`TM: Giving up catch-up attempt at a ... lag`). O Windows não estava em economia de energia.
+
+Diagnóstico rápido:
+
+```bash
+ssh n8n-poc 'touch /tmp/x'                       # "Read-only file system" confirma
+ssh n8n-poc 'journalctl -k -b | grep -iE "I/O error|Aborting journal"'
+```
+
+```powershell
+Select-String 'D:\VirtualBox VMs\n8n\Logs\VBox.log' -Pattern 'NEM|catch-up attempt'
+```
+
+Recuperação: `VBoxManage controlvm n8n reset`. O journal é refeito no boot; conferir
+`pragma integrity_check` nos bancos SQLite dos dois n8n.
+
+Mitigações aplicadas:
+- `watchdog-vm.ps1`, tarefa agendada a cada 5 min no Windows: reseta a VM se o disco estiver em
+  somente leitura ou se o SSH sumir por 3 verificações.
+- O listener espera o n8n responder antes de conectar ao Telegram. Num reboot, o Docker sobe os
+  containers pela política de restart e ignora o `depends_on` do Compose; sem a espera, os posts
+  recuperados pelo `catch_up` chegavam com o n8n ainda fora.
+
+Correção definitiva, no host: desligar a Integridade de Memória libera o VT-x para o VirtualBox,
+com o custo de abrir mão dessa proteção do Windows. Alternativa que mantém a proteção: aumentar o
+timeout de disco do Linux para sobreviver aos congelamentos
+(`/sys/block/sda/device/timeout`, via regra udev).
