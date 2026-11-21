@@ -230,7 +230,9 @@ Mitigações aplicadas:
   containers pela política de restart e ignora o `depends_on` do Compose; sem a espera, os posts
   recuperados pelo `catch_up` chegavam com o n8n ainda fora.
 
+Aplicado também (21/11): `deploy/vm/disk-timeout.sh` cria a regra udev que sobe o timeout de disco para
+1800 s; rodar uma vez com `sudo bash ~/deal-radar/deploy/vm/disk-timeout.sh`. Os congelamentos
+continuam, mas o Linux espera a gravação em vez de travar o disco.
+
 Correção definitiva, no host: desligar a Integridade de Memória libera o VT-x para o VirtualBox,
-com o custo de abrir mão dessa proteção do Windows. Alternativa que mantém a proteção: aumentar o
-timeout de disco do Linux para sobreviver aos congelamentos
-(`/sys/block/sda/device/timeout`, via regra udev).
+com o custo de abrir mão dessa proteção do Windows. Foi a opção descartada, para manter a proteção.
