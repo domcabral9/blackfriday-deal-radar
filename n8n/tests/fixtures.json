@@ -312,6 +312,36 @@
     "expect": { "status": "alerta", "product": "mochila", "price": 135 }
   },
   {
+    "name": "MX Master 4 entra na entrada própria",
+    "post": { "text": "🖱️ Mouse Sem Fio Logitech MX Master 4 Grafite, Feedback Háptico\n\n💰 R$ 679,90 no Pix" },
+    "expect": { "status": "alerta", "product": "mx-master-4", "price": 679.9 }
+  },
+  {
+    "name": "MX Master 4 acima de R$ 800 é descartado",
+    "post": { "text": "Logitech MX Master 4 Edição Creator\nR$ 899,90" },
+    "expect": { "status": "acima_do_teto" }
+  },
+  {
+    "name": "MX Master 3S entra na entrada geral",
+    "post": { "text": "Mouse Logitech MX Master 3S Sem Fio Bluetooth Grafite\nR$ 464,60" },
+    "expect": { "status": "alerta", "product": "mx-master", "price": 464.6 }
+  },
+  {
+    "name": "MX Master 3S acima de R$ 550 é descartado",
+    "post": { "text": "Mouse Logitech MX Master 3S Grafite\nR$ 649,90" },
+    "expect": { "status": "acima_do_teto" }
+  },
+  {
+    "name": "Case de MX Master é acessório",
+    "post": { "text": "Case Rígido para Mouse Logitech MX Master 3S\nR$ 59,90" },
+    "expect": { "status": "acessorio" }
+  },
+  {
+    "name": "MX Anywhere não é MX Master",
+    "post": { "text": "Mouse Logitech MX Anywhere 3S Grafite\nR$ 399" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
     "name": "Link do próprio Telegram não vira link da oferta",
     "post": { "text": "iPhone 16e 128GB R$ 3.299", "urls": ["https://t.me/canal", "https://amzn.to/zz"] },
     "expect": { "offerUrl": "https://amzn.to/zz" }

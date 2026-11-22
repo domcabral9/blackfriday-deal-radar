@@ -94,6 +94,25 @@ const catalog = [
     refPrice: [600, 800],
     highlight: true,
   },
+  // Logitech MX Master (22/11). O 4 é o preferido e tem entrada própria;
+  // a segunda pega 3S, 3 e 2S e exclui o 4 para não alertar em dobro.
+  // Tetos: lançamento do 4 no Brasil a R$ 799 (já visto a R$ 679,90);
+  // 3S em promoção costuma ficar entre R$ 420 e R$ 650.
+  {
+    id: 'mx-master-4',
+    label: 'Logitech MX Master 4',
+    model: 'mx\\s?master\\s?4',
+    minPrice: 200,
+    maxPrice: 800,
+  },
+  {
+    id: 'mx-master',
+    label: 'Logitech MX Master (3S e anteriores)',
+    model: 'mx\\s?master',
+    excludeAfter: ['4'],
+    minPrice: 200,
+    maxPrice: 550,
+  },
   {
     id: 'echo-dot',
     label: 'Echo Dot (5ª geração ou mais recente)',
