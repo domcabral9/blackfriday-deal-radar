@@ -127,9 +127,10 @@ do aviso "Radar online" depois de ligar o PC é o sinal.
 
 | Comando | Exemplo |
 |---|---|
-| `/produtos` | lista com status e teto |
+| `/produtos` | lista com status e faixa de preço (mínimo a teto) |
 | `/pausar <id>`, `/ativar <id>` | `/pausar iphone-16e` depois de comprar |
 | `/teto <id> <valor>` | `/teto tv-lg-qned 4500` |
+| `/minimo <id> <valor>` | `/minimo controle 200` (abaixo do mínimo, o post vira "acessório") |
 | `/add <termos> [-excluir] [teto=N] [min=N]` | `/add galaxy s25 fe -ultra teto=2500` |
 | `/remover <id>` | só produtos criados por `/add` |
 | `/status` | último post recebido e produtos ativos |

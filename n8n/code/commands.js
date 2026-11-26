@@ -6,6 +6,7 @@
 //   /produtos                         lista com status e teto
 //   /pausar <id>   /ativar <id>       liga e desliga um produto
 //   /teto <id> <valor>                muda o teto de preço
+//   /minimo <id> <valor>              muda o preço mínimo (abaixo é acessório)
 //   /add <termos> [-excluir] [teto=N] [min=N]   cria um produto
 //   /remover <id>                     apaga um produto criado por /add
 //   /status                           saúde do listener
@@ -20,6 +21,7 @@ const HELP = [
   '/produtos: lista produtos, status e teto',
   '/pausar <code>id</code> e /ativar <code>id</code>',
   '/teto <code>id</code> <code>valor</code>: ex. <code>/teto iphone-17 4500</code>',
+  '/minimo <code>id</code> <code>valor</code>: ex. <code>/minimo controle 200</code>',
   '/add <code>termos</code>: ex. <code>/add galaxy s25 fe -ultra teto=2500</code>',
   '   termos com "-" excluem; teto e min em reais',
   '/remover <code>id</code>: só produtos criados por /add',
@@ -110,7 +112,7 @@ function handleCommand(text, store, ctx, now = Date.now()) {
     case '/produtos': {
       if (!catalog.length) return 'Catálogo vazio.';
       const lines = catalog.map((p) =>
-        `${p.active === false ? '⏸' : '🟢'} <code>${esc(p.id)}</code> ${esc(p.label)} · até ${brl(p.maxPrice)}${p.custom ? ' · <i>via /add</i>' : ''}`);
+        `${p.active === false ? '⏸' : '🟢'} <code>${esc(p.id)}</code> ${esc(p.label)} · ${brl(p.minPrice || 0)} a ${brl(p.maxPrice)}${p.custom ? ' · <i>via /add</i>' : ''}`);
       return `<b>Produtos monitorados</b>\n${lines.join('\n')}`;
     }
 
@@ -128,8 +130,21 @@ function handleCommand(text, store, ctx, now = Date.now()) {
       if (!p) return unknown(args[0]);
       const v = parseMoney(args[1]);
       if (v === null) return 'Uso: <code>/teto id valor</code>, ex. <code>/teto iphone-17 4500</code>';
+      if (v <= (p.minPrice || 0)) return `O teto precisa ser maior que o mínimo atual (${brl(p.minPrice)}). Ajuste com /minimo.`;
       store.overrides[p.id] = { ...store.overrides[p.id], maxPrice: v };
       return `💰 Teto de ${esc(p.label)}: ${brl(v)}`;
+    }
+
+    case '/minimo': {
+      // O mínimo separa o produto de capas e acessórios; baixar demais faz
+      // acessório virar alerta, por isso a resposta lembra o efeito
+      const p = find(args[0]);
+      if (!p) return unknown(args[0]);
+      const raw = args[1] === '0' ? 0 : parseMoney(args[1]);
+      if (raw === null || raw === undefined) return 'Uso: <code>/minimo id valor</code>, ex. <code>/minimo controle 200</code>';
+      if (raw >= p.maxPrice) return `O mínimo precisa ser menor que o teto atual (${brl(p.maxPrice)}). Ajuste com /teto.`;
+      store.overrides[p.id] = { ...store.overrides[p.id], minPrice: raw };
+      return `🔻 Mínimo de ${esc(p.label)}: ${brl(raw)}\n<i>Abaixo disso o post é tratado como acessório (capa, película, peça).</i>`;
     }
 
     case '/add': {

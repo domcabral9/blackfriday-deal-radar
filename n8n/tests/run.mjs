@@ -136,6 +136,12 @@ if (corpusPath === '--preview') {
     ['/remover de base é recusado', /não são removidos/.test(cmd('/remover iphone-17'))],
     ['/remover do /add funciona', /Removido/.test(cmd('/remover galaxy-s25-fe')) && statusOf('Galaxy S25 FE R$ 2.400') === 'sem_produto'],
     ['/teto com valor inválido explica uso', /Uso:/.test(cmd('/teto iphone-17 abc'))],
+    ['/minimo baixa o piso', /Mínimo de Kindle: R\$\s?150/.test(cmd('/minimo kindle 150'))],
+    ['com piso menor, Kindle barato vira alerta', statusOf('Kindle 16GB oferta relâmpago\nR$ 199') === 'alerta'],
+    ['/produtos mostra a faixa com o mínimo', /kindle<\/code> Kindle · R\$\s?150 a R\$\s?800/.test(cmd('/produtos'))],
+    ['/minimo maior que o teto é recusado', /menor que o teto/.test(cmd('/minimo kindle 900'))],
+    ['/teto menor que o mínimo é recusado', /maior que o mínimo/.test(cmd('/teto kindle 100'))],
+    ['/minimo com valor inválido explica uso', /Uso:/.test(cmd('/minimo kindle abc'))],
     ['id desconhecido sugere /produtos', /não encontrado/.test(cmd('/pausar xpto'))],
     ['/status mostra posts', /Posts desde o início: 42/.test(cmd('/status'))],
   ];
