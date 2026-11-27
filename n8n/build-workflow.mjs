@@ -46,6 +46,7 @@ const nodes = [
   }),
   node('Deduplicar', 'n8n-nodes-base.code', 2, 1100, { jsCode: code('dedup.js') }),
   node('Formatar alerta', 'n8n-nodes-base.code', 2, 1320, { jsCode: code('format-message.js') }),
+  { ...node('Registrar preço', 'n8n-nodes-base.code', 2, 0, { jsCode: code('price-history.js') }), position: [770, 160] },
   node('Enviar no Telegram', 'n8n-nodes-base.telegram', 1.2, 1540, {
     chatId: '<TELEGRAM_CHAT_ID>',
     text: '={{ $json.text }}',
@@ -56,6 +57,13 @@ const nodes = [
           buttons: [
             { text: '🔗 Abrir oferta', additionalFields: { url: '={{ $json.offerUrl }}' } },
             { text: '💬 Post original', additionalFields: { url: '={{ $json.postUrl }}' } },
+          ],
+        },
+      }, {
+        row: {
+          // callback lido pelo listener (bot via MTProto) e virado em /historico
+          buttons: [
+            { text: '📈 Histórico de preço', additionalFields: { callback_data: '={{ "hist:" + $json.products[0].id }}' } },
           ],
         },
       }],
@@ -103,7 +111,8 @@ const connections = {
   'Catálogo de produtos': to('É comando?'),
   'É comando?': to('Processar comando', 'Analisar oferta'), // saída 0 = verdadeiro
   'Processar comando': to('Responder comando'),
-  'Analisar oferta': to('É alerta?'),
+  'Analisar oferta': to('Registrar preço'),
+  'Registrar preço': to('É alerta?'),
   'É alerta?': to('Deduplicar'),
   'Deduplicar': to('Formatar alerta'),
   'Formatar alerta': to('Enviar no Telegram'),

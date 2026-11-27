@@ -91,3 +91,18 @@ aparece no histórico de execuções do n8n e explica por que um post não gerou
 Os dois canais costumam repostar a mesma oferta, cada um com seu link de afiliado. A chave de dedup
 é produto + preço arredondado, que se mantém entre canais, com janela de 12 horas. Sem preço
 identificado, a chave cai para o link.
+
+## Histórico de preços
+
+O nó "Registrar preço" guarda, no static data do workflow, o preço de todo post que bateu com um
+produto (alerta ou acima do teto), por até 45 dias e 300 registros por produto, sem repetir o mesmo
+post. O comando `/historico` e o botão "📈 Histórico de preço" de cada alerta resumem esse registro:
+ofertas vistas, menor, maior, mais recente e a variação em relação à primeira oferta e ao maior
+preço da janela.
+
+O botão usa `callback_data`. Como o n8n não recebe atualizações do bot (não há URL pública), quem
+recebe o toque é o listener, que responde ao Telegram e repassa ao n8n como `/historico <id>`.
+
+O histórico foi carregado retroativamente com os posts guardados desde 11/11, enviados com
+`history_only: true`: passam pela análise sem o corte de idade e param no registro de preço, sem
+gerar alerta.

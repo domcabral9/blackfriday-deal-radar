@@ -246,6 +246,23 @@ async def start_bot(http: httpx.AsyncClient):
             log.warning("comando nao chegou ao n8n: %s", exc)
             await event.reply("O n8n não respondeu. Tente de novo em instantes.")
 
+    @bot.on(events.CallbackQuery)
+    async def on_button(event):
+        # Botao "📈 Historico de preco" dos alertas: callback "hist:<id>"
+        if event.sender_id != config.OWNER_ID:
+            await event.answer()
+            return
+        data = (event.data or b"").decode("utf-8", "ignore")
+        if not data.startswith("hist:"):
+            await event.answer()
+            return
+        await event.answer("Consultando o histórico...")
+        body = {"chat_id": event.chat_id, "text": f"/historico {data[5:]}", "listener": STATE}
+        try:
+            await http.post(config.COMMAND_URL, json=body, headers={"X-Radar-Token": config.WEBHOOK_TOKEN})
+        except httpx.HTTPError as exc:
+            log.warning("historico nao chegou ao n8n: %s", exc)
+
     await bot.start(bot_token=config.BOT_TOKEN)
     log.info("bot de comandos ativo")
     return bot

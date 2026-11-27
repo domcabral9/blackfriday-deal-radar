@@ -188,7 +188,11 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
   const maxReplay = (settings.maxReplayHours ?? 0) * 60;
   const age = ageMinutes(post, now);
   const retro = age > maxAge;
-  if (retro && !(post.replay && age <= maxReplay)) return { status: 'antigo', ageMinutes: Math.round(age) };
+  // history_only: carga do histórico de preços; idade não importa, e o nó
+  // "Registrar preço" impede que vire alerta
+  if (retro && !post.history_only && !(post.replay && age <= maxReplay)) {
+    return { status: 'antigo', ageMinutes: Math.round(age) };
+  }
 
   const matched = matchProducts(post, catalog);
   if (!matched.length) return { status: 'sem_produto' };

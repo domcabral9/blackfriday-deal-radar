@@ -84,7 +84,7 @@ desligamento abrupto abortou o journal do ext4 e remontou o disco como somente l
 
 ## Validação
 
-- **103 testes** no harness local, executando exatamente o código que roda dentro dos nós do n8n:
+- **111 testes** no harness local, executando exatamente o código que roda dentro dos nós do n8n:
   matching, preço, cupom, link, dedup, healthcheck em linha do tempo simulada e comandos do bot.
 - **Corpus real:** o motor foi rodado contra cerca de 800 posts dos dois canais. Todo post que citava
   modelos parecidos com os alvos foi conferido manualmente, sem nenhum falso negativo: TVs de 65",
@@ -93,7 +93,7 @@ desligamento abrupto abortou o journal do ext4 e remontou o disco como somente l
   automático de todos os serviços.
 
 ```
-node n8n/tests/run.mjs                 # 103/103 casos passaram
+node n8n/tests/run.mjs                 # 111/111 casos passaram
 node n8n/tests/run.mjs --preview       # mostra cada alerta como chega no bot
 node n8n/tests/run.mjs corpus.jsonl    # roda posts reais e resume o que alertaria
 ```

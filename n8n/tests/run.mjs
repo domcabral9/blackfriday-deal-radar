@@ -164,7 +164,36 @@ if (corpusPath === '--preview') {
     console.log(`${ok ? 'ok     ' : 'FALHOU '} bot: ${name}`);
   }
 
-  const total = cases.length + dedupChecks.length + healthChecks.length + botChecks.length;
+  // Histórico de preços: registro + resumo
+  const { recordPrice } = load('price-history.js');
+  const { summarizeHistory } = load('commands.js');
+  const hs = {};
+  const hNow = Date.parse('2026-11-27T12:00:00Z');
+  const rec = (price, iso, msg, status = 'alerta') => recordPrice(hs,
+    status === 'alerta' ? { status, products: [{ id: 'iphone-16e' }], price } : { status, matched: ['iphone-16e'], price },
+    { posted_at: iso, message_id: msg, source: { channel_id: 1, title: 'Ofertas Rodrigo Moreira' } }, hNow);
+  rec(3299, '2026-11-23T15:00:00Z', 1);
+  rec(3099, '2026-11-25T15:00:00Z', 2);
+  rec(2856, '2026-11-27T11:03:00Z', 3);
+  rec(2784, '2026-11-27T12:18:00Z', 4);
+  const hist3 = summarizeHistory({ id: 'iphone-16e', label: 'iPhone 16e' }, hs.history['iphone-16e'], 3, hNow);
+  const histChecks = [
+    ['mesmo post não é registrado duas vezes', rec(2784, '2026-11-27T12:18:00Z', 4) === false && hs.history['iphone-16e'].length === 4],
+    ['acessório não entra no histórico', recordPrice(hs, { status: 'acessorio', matched: ['iphone-16e'], price: 50 }, { posted_at: '2026-11-27T10:00:00Z', message_id: 9, source: { channel_id: 1 } }, hNow) === false],
+    ['acima do teto entra no histórico', rec(5289, '2026-11-27T04:44:00Z', 5, 'acima_do_teto') === true],
+    ['janela de 3 dias ignora o post de 23/11', /Ofertas vistas: 3/.test(hist3)],
+    ['queda desde a primeira oferta em %', /🔻 Desde a primeira \(R\$\s?3\.099,00.*10,2% de queda/.test(hist3)],
+    ['preço mais recente marcado como o menor', /O preço mais recente é o menor/.test(hist3)],
+    ['sem dados sugere aumentar a janela', /Nenhuma oferta vista/.test(summarizeHistory({ id: 'kindle', label: 'Kindle' }, [], 3, hNow))],
+    ['/historico responde pelo bot', /Histórico: iPhone 16e/.test(handleCommand('/historico iphone-16e 3', { history: hs.history }, { catalog: currentCatalog() }, hNow))],
+  ];
+  for (const [name, ok] of histChecks) {
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok     ' : 'FALHOU '} histórico: ${name}`);
+  }
+  console.log('\n' + hist3 + '\n');
+
+  const total = cases.length + dedupChecks.length + healthChecks.length + botChecks.length + histChecks.length;
   console.log(`\n${total - failed}/${total} casos passaram`);
   process.exit(failed ? 1 : 0);
 }
