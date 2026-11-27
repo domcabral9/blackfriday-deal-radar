@@ -18,6 +18,10 @@ HEARTBEAT_SECONDS = int(os.environ.get("HEARTBEAT_SECONDS", "300"))
 
 # A cada quantos segundos o listener confere no Telegram se perdeu algum post
 RECONCILE_SECONDS = int(os.environ.get("RECONCILE_SECONDS", "120"))
+# Tempo maximo de uma reconciliacao antes de desistir dela
+RECONCILE_TIMEOUT = int(os.environ.get("RECONCILE_TIMEOUT", "90"))
+# Sem reconciliacao bem-sucedida por esse tempo, o listener se reinicia
+STALE_EXIT_SECONDS = int(os.environ.get("STALE_EXIT_SECONDS", "480"))
 # Limite de posts recuperados por canal numa unica reconciliacao
 RECONCILE_LIMIT = int(os.environ.get("RECONCILE_LIMIT", "500"))
 

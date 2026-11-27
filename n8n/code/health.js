@@ -10,6 +10,9 @@
 //   listener reiniciado ou de volta              -> online (verde)
 
 const STALE_MINUTES = 15;
+// Batimento chegando não prova que o listener lê posts: em 27/11 ele ficou
+// 8 h vivo com a conexão do Telegram travada. Este limite vale a qualquer hora.
+const TELEGRAM_STALE_MINUTES = 15;
 const QUIET_HOURS = 3;
 const ACTIVE_HOURS = [9, 23]; // fora disso, silêncio nos canais é normal
 const TZ = 'America/Sao_Paulo';
@@ -39,6 +42,15 @@ function onBeat(store, beat, now = Date.now()) {
     store.quietAlerted = false;
   }
 
+  const tgOk = beat.last_telegram_ok ? Date.parse(beat.last_telegram_ok) : null;
+  if (tgOk) {
+    if (store.tgAlerted && now - tgOk < TELEGRAM_STALE_MINUTES * 60000) {
+      messages.push('🟢 <b>Conexão com o Telegram normalizada</b>\nPosts perdidos no intervalo chegam como retroativos.');
+      store.tgAlerted = false;
+    }
+    store.lastTelegramOk = tgOk;
+  }
+
   store.lastBeatAt = now;
   store.startedAt = beat.started_at;
   store.lastMessageAt = lastMsg ?? store.lastMessageAt ?? Date.parse(beat.started_at);
@@ -59,6 +71,7 @@ function evaluate(store, now = Date.now()) {
   if (!previousCheck || now - previousCheck > 20 * 60000) {
     store.lastBeatAt = Math.max(store.lastBeatAt, now);
     store.lastMessageAt = Math.max(store.lastMessageAt || 0, now);
+    if (store.lastTelegramOk) store.lastTelegramOk = Math.max(store.lastTelegramOk, now);
     return messages;
   }
 
@@ -68,6 +81,17 @@ function evaluate(store, now = Date.now()) {
     messages.push(
       `🔴 <b>Listener sem sinal há ${Math.round(staleMin)} min</b>\n` +
       'Nenhuma oferta está sendo lida. Verificar: <code>docker logs deal-radar-listener</code>'
+    );
+    return messages;
+  }
+
+  const tgStaleMin = store.lastTelegramOk ? (now - store.lastTelegramOk) / 60000 : 0;
+  if (tgStaleMin > TELEGRAM_STALE_MINUTES && !store.tgAlerted) {
+    store.tgAlerted = true;
+    messages.push(
+      `🔴 <b>Telegram sem resposta há ${Math.round(tgStaleMin)} min</b>\n` +
+      'O listener está vivo, mas não consegue ler os canais e não se recuperou sozinho. ' +
+      'Verificar: <code>docker restart deal-radar-listener</code>'
     );
     return messages;
   }

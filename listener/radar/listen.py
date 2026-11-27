@@ -57,6 +57,10 @@ STATE = {
     "started_at": datetime.now(timezone.utc).isoformat(),
     "last_message_at": None,
     "messages_since_start": 0,
+    # Ultima resposta real do Telegram (chamadas da reconciliacao): prova de
+    # que a conexao funciona, e nao so de que o processo esta vivo
+    "last_telegram_ok": None,
+    "last_reconcile_ok": None,
 }
 
 
@@ -133,20 +137,31 @@ async def main() -> None:
     async def on_message(event):
         await process(event.message, await event.get_chat(), replay=False)
 
+    async def tg(coro):
+        # Limite so nas chamadas ao Telegram, que e onde a conexao "zumbi"
+        # trava. O envio ao n8n fica fora: depois de uma noite parada, entregar
+        # centenas de posts pode demorar e nao e sinal de problema.
+        result = await asyncio.wait_for(coro, timeout=config.RECONCILE_TIMEOUT)
+        STATE["last_telegram_ok"] = datetime.now(timezone.utc).isoformat()
+        return result
+
+    async def fetch_after(chat, last):
+        return [m async for m in client.iter_messages(
+            chat, min_id=last, reverse=True, limit=config.RECONCILE_LIMIT)]
+
     async def reconcile() -> None:
         for channel_id in config.CHANNEL_IDS:
-            chat = await client.get_entity(channel_id)
+            chat = await tg(client.get_entity(channel_id))
             last = cursor.watermark.get(chat.id)
             if last is None:
                 # Primeira execucao: marca a posicao atual sem inundar o bot
-                latest = await client.get_messages(chat, limit=1)
+                latest = await tg(client.get_messages(chat, limit=1))
                 async with lock:
                     cursor.watermark[chat.id] = latest[0].id if latest else 0
                     cursor.save()
                 log.info("cursor iniciado em %s: %s", chat.title, cursor.watermark[chat.id])
                 continue
-            fetched = [m async for m in client.iter_messages(
-                chat, min_id=last, reverse=True, limit=config.RECONCILE_LIMIT)]
+            fetched = await tg(fetch_after(chat, last))
             missed = [m for m in fetched if m.message and not cursor.is_seen(chat.id, m.id)]
             if missed:
                 log.info("reconciliacao: %d post(s) perdido(s) em %s", len(missed), chat.title)
@@ -160,16 +175,43 @@ async def main() -> None:
     async def reconcile_loop() -> None:
         while True:
             try:
+                # Sem limite de tempo, uma conexao "zumbi" com o Telegram deixa
+                # a reconciliacao esperando para sempre (incidente de 27/11)
                 await reconcile()
+                STATE["last_reconcile_ok"] = datetime.now(timezone.utc).isoformat()
+            except asyncio.TimeoutError:
+                log.warning("Telegram sem resposta em %ds na reconciliacao", config.RECONCILE_TIMEOUT)
             except Exception as exc:  # rede instavel nao pode matar o loop
                 log.warning("reconciliacao falhou: %s", exc)
             await asyncio.sleep(config.RECONCILE_SECONDS)
 
+    async def liveness_watchdog() -> None:
+        """Encerra o processo se o Telegram parar de responder.
+
+        Processo vivo nao e processo funcionando: em 27/11 a conexao com o
+        Telegram travou sem cair, e o listener ficou 8 h "Up" sem ler nada.
+        Saindo, o Docker reinicia o container e a reconciliacao do boot
+        recupera tudo o que foi publicado no intervalo.
+        """
+        while True:
+            await asyncio.sleep(60)
+            last = STATE.get("last_telegram_ok")
+            if not last:
+                continue
+            stale = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+            if stale > config.STALE_EXIT_SECONDS:
+                log.error("Telegram sem responder ha %ds; reiniciando o listener", int(stale))
+                os._exit(1)
+
     await wait_for_n8n(http)
     await client.start()
+    # Conta a partir da conexao: se o Telegram travar ja na primeira
+    # reconciliacao, o watchdog tambem precisa disparar
+    STATE["last_telegram_ok"] = datetime.now(timezone.utc).isoformat()
     log.info("escutando %d canais", len(config.CHANNEL_IDS))
     beat_task = asyncio.create_task(heartbeat_loop(client, http))
     reconcile_task = asyncio.create_task(reconcile_loop())
+    asyncio.create_task(liveness_watchdog())
 
     waiters = [asyncio.create_task(client.run_until_disconnected())]
     bot = await start_bot(http)

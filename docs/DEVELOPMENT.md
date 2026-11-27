@@ -254,3 +254,25 @@ Efeito: idade dos posts e healthcheck calculados com o "agora" errado. Correçõ
 - `deploy/vm/timesync.sh` (rodar uma vez com sudo) faz o NTP conferir a cada 2 min.
 - `stop-vm.ps1` só desiste do desligamento limpo quando o estado diz claramente `poweroff`,
   `saved` ou `aborted`.
+
+### Conexão "zumbi" com o Telegram: processo vivo, nada sendo lido
+
+Incidente real, o mais caro do projeto (27/11, madrugada da Black Friday): às 01:42 o Telethon
+registrou `Server sent a very old message ... ignoring` e a conexão com o Telegram parou de entregar
+posts sem cair. O container seguiu `Up`, o batimento seguiu chegando ao n8n e o watchdog do Windows
+viu SSH e disco ok. A reconciliação, feita para cobrir exatamente perdas assim, ficou esperando para
+sempre uma resposta do Telegram, porque não tinha limite de tempo. O aviso de canais em silêncio só
+valia das 9h às 23h, com a premissa de que silêncio de madrugada é normal; nessa noite os canais
+publicaram 60 a 80 ofertas por hora. Resultado: 8 horas sem leitura, descoberto às 9h.
+
+Recuperação: `docker restart deal-radar-listener`. A reconciliação trouxe os 125 posts da noite e
+mandou como retroativos os que bateram com o catálogo.
+
+Lição: monitorar se o processo está vivo não basta; é preciso monitorar se ele está funcionando.
+Correções:
+- Toda chamada ao Telegram na reconciliação tem limite de 90 s (`RECONCILE_TIMEOUT`).
+- `last_telegram_ok` registra a última resposta real do Telegram. Sem resposta por 8 min
+  (`STALE_EXIT_SECONDS`), o listener se encerra e o Docker o reinicia; a reconciliação do boot
+  recupera o intervalo. Validado simulando o travamento: saída com código 1 depois de ~150 s.
+- O healthcheck recebe `last_telegram_ok` no batimento e avisa com 🔴 se passar de 15 min, a
+  qualquer hora. Isso só acontece se a autocura falhar.

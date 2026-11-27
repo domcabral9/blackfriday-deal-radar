@@ -109,6 +109,20 @@ if (corpusPath === '--preview') {
       return out.length === 0;
     })()],
   ];
+  // Incidente de 27/11: batimento normal, Telegram travado, de madrugada
+  const z = {};
+  const zAt = (iso) => Date.parse(iso);
+  const zBeat = (tgIso, nowIso) => onBeat(z, { started_at: '2026-11-27T00:00:00Z', last_message_at: '2026-11-27T04:37:00Z', last_telegram_ok: tgIso, connected: true, channels: 2 }, zAt(nowIso));
+  zBeat('2026-11-27T04:40:00Z', '2026-11-27T04:40:00Z');
+  evaluate(z, zAt('2026-11-27T04:41:00Z'));
+  const zombie = [
+    ['Telegram travado 10 min ainda não alerta', (() => { zBeat('2026-11-27T04:42:00Z', '2026-11-27T04:50:00Z'); return evaluate(z, zAt('2026-11-27T04:52:00Z')).length === 0; })()],
+    ['Telegram travado 16 min alerta mesmo às 01h58 BRT', (() => { zBeat('2026-11-27T04:42:00Z', '2026-11-27T04:57:00Z'); return /Telegram sem resposta/.test(evaluate(z, zAt('2026-11-27T04:58:30Z')).join()); })()],
+    ['alerta de Telegram travado sai uma vez só', (() => { zBeat('2026-11-27T04:42:00Z', '2026-11-27T05:02:00Z'); return evaluate(z, zAt('2026-11-27T05:03:00Z')).length === 0; })()],
+    ['Telegram voltando avisa normalização', /normalizada/.test(zBeat('2026-11-27T05:10:00Z', '2026-11-27T05:10:00Z').join())],
+  ];
+  healthChecks.push(...zombie);
+
   for (const [name, ok] of healthChecks) {
     if (!ok) failed++;
     console.log(`${ok ? 'ok     ' : 'FALHOU '} saúde: ${name}`);
