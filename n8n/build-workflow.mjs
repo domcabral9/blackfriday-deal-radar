@@ -27,6 +27,12 @@ const nodes = [
     httpMethod: 'POST',
     path: 'deal-radar/ingest',
     authentication: 'headerAuth',
+    // Responde só ao fim da execução. O listener espera a resposta antes do
+    // próximo post, então as execuções ficam em fila. Respondendo na chegada,
+    // rajadas (reconciliação depois de uma queda) rodavam em paralelo e uma
+    // execução sobrescrevia o static data da outra (dedup e histórico).
+    responseMode: 'lastNode',
+    responseData: 'noData',
     options: {},
   }, { webhookId: 'deal-radar-ingest', credentials: { httpHeaderAuth: CRED_WEBHOOK } }),
   node('Catálogo de produtos', 'n8n-nodes-base.code', 2, 220, { jsCode: code('catalog.js') }),
@@ -79,6 +85,9 @@ nodes.push(
     httpMethod: 'POST',
     path: 'deal-radar/command',
     authentication: 'headerAuth',
+    // Mesmo motivo do webhook de posts: comandos alteram o static data
+    responseMode: 'lastNode',
+    responseData: 'noData',
     options: {},
   }, { webhookId: 'deal-radar-command', credentials: { httpHeaderAuth: CRED_WEBHOOK } }), 0, 520),
   place(node('É comando?', 'n8n-nodes-base.if', 2, 0, {

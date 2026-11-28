@@ -342,6 +342,59 @@
     "expect": { "status": "sem_produto" }
   },
   {
+    "name": "Real (VRL): TCL QLED 55\" P7L",
+    "post": { "text": "🔥 (Lançamento 2026) Smart Tv 55\" TCL QLED 4K P7L | De R$2.499,90 Por R$ 1.741,61 (no Pix)" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 1741.61 }
+  },
+  {
+    "name": "Real (Rodrigo): Hisense Hi-QLED com tamanho só no código do modelo",
+    "post": { "text": "📺 Smart Tv 65 4k Uhd Qled 65q6qv 65q6qv Hdr10 Dolby Hisense\n\n💰 R$ 2.599" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 2599 }
+  },
+  {
+    "name": "Real (VRL): Samsung Neo QLED 55\" entra",
+    "post": { "text": "(Lançamento 2026) Smart Tv 55\" Samsung Neo QLED Mini LED 4K QN70H | De R$4.475,89 Por R$ 3.599,00" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 3599 }
+  },
+  {
+    "name": "Real (Rodrigo): post com 43\" e 65\" usa preço e link da 65\"",
+    "post": {
+      "text": "‼️Hisense Smart TV UHD 4K HI-QLED\n\n🤑Resgate o cupom: BLACK150 no anúncio\n\n43 POLEGADAS\nSaindo a R$ 1.417 EM ATÉ 10X SEM JUROS\n🛒https://link.amazon/B0hwaxHCk\n\n65 POLEGADAS\nSaindo a R$ 2.783 EM ATÉ 10X SEM JUROS\n🛒https://link.amazon/B0h4HqJ2D",
+      "urls": ["https://link.amazon/B0hwaxHCk", "https://link.amazon/B0h4HqJ2D"]
+    },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 2783, "offerUrl": "https://link.amazon/B0h4HqJ2D", "coupon": "BLACK150" }
+  },
+  {
+    "name": "QLED de 50\" é descartada",
+    "post": { "text": "🔥 (Lançamento 2027) Smart TV 50\" QLED 4K Toshiba M450RS | De R$2.119,99 Por R$ 1.719,99" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "QLED de 75\" é descartada",
+    "post": { "text": "Smart Tv QLED 4K 75\" Hisense Q6QV | De R$5.699,00 Por R$ 3.648,07 (no Pix)" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Real: monitor TCL QLED Mini LED não é TV",
+    "post": { "text": "🖥️ Monitor Gamer Tcl 25\" Qled Mini Led 300Hz Full Hd G64 1ms\n\n💰 R$ 854" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "Neo QLED 65\" acima de R$ 5.000 é descartada",
+    "post": { "text": "(Lançamento 2026) Smart Tv 65\" Samsung Neo QLED Mini LED 4K 120Hz QN70H | De R$5.987,13 Por R$ 5.537,00" },
+    "expect": { "status": "acima_do_teto" }
+  },
+  {
+    "name": "TCL QD-Mini LED (sem a palavra QLED) fica de fora",
+    "post": { "text": "🔥 Smart Tv 65\" TCL C6K QD-Mini LED 4K 120Hz | De R$4.799,00 Por R$ 3.299,00" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "LG QNED 65\" não é QLED (continua fora: a entrada da LG é só 55\")",
+    "post": { "text": "(Lançamento 2026) Smart Tv 65\" LG QNED Evo Mini LED QNED80 | De R$4.599,90 Por R$ 3.319,17" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
     "name": "Link do próprio Telegram não vira link da oferta",
     "post": { "text": "iPhone 16e 128GB R$ 3.299", "urls": ["https://t.me/canal", "https://amzn.to/zz"] },
     "expect": { "offerUrl": "https://amzn.to/zz" }

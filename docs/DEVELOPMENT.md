@@ -277,3 +277,18 @@ Correções:
   recupera o intervalo. Validado simulando o travamento: saída com código 1 depois de ~150 s.
 - O healthcheck recebe `last_telegram_ok` no batimento e avisa com 🔴 se passar de 15 min, a
   qualquer hora. Isso só acontece se a autocura falhar.
+
+### Execuções em paralelo sobrescrevem o static data
+
+Achado em 28/11 ao carregar o histórico da TV QLED: de 66 posts enviados, só 33 ficaram gravados.
+Os webhooks respondiam na chegada (`responseMode: onReceived`), então uma rajada de posts virava
+execuções em paralelo. Cada execução lê o static data (dedup, histórico, ajustes do bot) ao começar
+e grava ao terminar, e a última a terminar apagava o que as outras tinham gravado. Na operação
+normal isso aparece depois de uma queda, quando a reconciliação entrega dezenas de posts seguidos:
+o dedup podia perder uma oferta e alertar em dobro.
+
+Correção: os webhooks de posts e de comandos usam `responseMode: lastNode` com
+`responseData: noData` (parâmetro de primeiro nível do nó, fora de `options`). A resposta só sai
+ao fim da execução, e como o listener espera a resposta antes do próximo post, o processamento fica
+em fila. Sem `responseData: noData`, toda execução que termina sem itens (post sem produto) responde
+500 "No item to return was found".

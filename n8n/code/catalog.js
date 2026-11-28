@@ -51,6 +51,19 @@ const catalog = [
     size: 55,
     ...TV,
   },
+  // QLED de qualquer marca (28/11). Regra montada com 206 TVs QLED/Mini LED
+  // vistas nos canais: o texto precisa dizer "QLED" (pega Hi-QLED da Hisense e
+  // Neo QLED da Samsung) e "TV"; monitores TCL "Qled Mini Led" ficam de fora.
+  // QNED da LG não bate ("qned" != "qled") e tem entrada própria.
+  {
+    id: 'tv-qled-55-65',
+    label: 'Smart TV QLED 55" ou 65"',
+    model: 'qled',
+    requireAll: ['(?<![a-z])tv(?![a-z])|televis'],
+    excludeAny: ['monitor'],
+    size: [55, 65],
+    ...TV,
+  },
   {
     id: 'moto-edge-70',
     label: 'Motorola Edge 70',

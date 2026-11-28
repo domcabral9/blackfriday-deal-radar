@@ -34,7 +34,20 @@ if (corpusPath === '--preview') {
     console.log(`----- ${c.name}\n${msg.text}\n[Abrir oferta] ${msg.offerUrl}   [Post original] ${msg.postUrl}\n`);
   }
 } else if (corpusPath) {
-  const posts = readFileSync(corpusPath, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  // Ignora linhas corrompidas (o arquivo do listener já teve uma, gravada no
+  // dia em que o disco da VM travou) e posts repetidos entre arquivos
+  const seenKeys = new Set();
+  const posts = readFileSync(corpusPath, 'utf8').split('\n').flatMap((l) => {
+    try {
+      const p = JSON.parse(l);
+      const key = `${p.source?.channel_id}:${p.message_id}`;
+      if (seenKeys.has(key)) return [];
+      seenKeys.add(key);
+      return [p];
+    } catch {
+      return [];
+    }
+  });
   const tally = {};
   for (const post of posts) {
     const r = analyze(post, catalog);

@@ -138,7 +138,8 @@ function buildMatcher(product) {
     model: new RegExp(`(?<![a-z])(?:${product.model})${lookahead}`),
     requireAll: (product.requireAll || []).map((r) => new RegExp(r)),
     excludeAny: (product.excludeAny || []).map((r) => new RegExp(r)),
-    size: product.size ? new RegExp(`\\b${product.size}(?!\\d)`) : null,
+    // size aceita um número (55) ou uma lista ([55, 65])
+    size: product.size ? new RegExp(`\\b(?:${[].concat(product.size).join('|')})(?!\\d)`) : null,
   };
 }
 
@@ -155,6 +156,26 @@ function ramMentions(norm) {
     if (v >= 2 && v <= 16) found.push(v);
   }
   return [...new Set(found)];
+}
+
+// Posts com várias TVs ("43 POLEGADAS ... R$ 1.417 ... link" e logo abaixo
+// "65 POLEGADAS ... R$ 2.783 ... link"): devolve só o trecho do tamanho que
+// interessa, para preço e link saírem da TV certa. Sem divisão clara por
+// tamanho, devolve o texto inteiro.
+const SIZE_LINE = /(?<![0-9])(\d{2,3})\s?(?:"|”|''|pol)/i;
+
+function scopeToSize(text, sizes) {
+  const wanted = [].concat(sizes).map(String);
+  const lines = String(text || '').split('\n');
+  const marks = lines
+    .map((l, i) => ({ i, m: l.match(SIZE_LINE) }))
+    .filter((x) => x.m)
+    .map((x) => ({ i: x.i, size: x.m[1] }));
+  if (new Set(marks.map((x) => x.size)).size < 2) return text;
+  const start = marks.find((x) => wanted.includes(x.size));
+  if (!start) return text;
+  const next = marks.find((x) => x.i > start.i && x.size !== start.size);
+  return lines.slice(start.i, next ? next.i : lines.length).join('\n');
 }
 
 function matchProducts(post, catalog) {
@@ -197,8 +218,13 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
   const matched = matchProducts(post, catalog);
   if (!matched.length) return { status: 'sem_produto' };
 
-  const { cash, installments } = extractPrices(post.text || '');
   const primary = matched[0];
+  // Produto com tamanho num post de várias TVs: preço e link do trecho certo
+  const scopedText = primary.size ? scopeToSize(post.text, primary.size) : post.text;
+  const scopedUrls = scopedText === post.text
+    ? post.urls
+    : (post.urls || []).filter((u) => scopedText.includes(u));
+  const { cash, installments } = extractPrices(scopedText || '');
   const plausibleCash = cash.filter((v) => v >= primary.minPrice);
   const plausibleInst = installments.filter((i) => i.total >= primary.minPrice);
 
@@ -226,7 +252,7 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
     price,
     installment,
     coupon: extractCoupon(post),
-    offerUrl: pickOfferUrl(post),
+    offerUrl: pickOfferUrl({ ...post, text: scopedText, urls: scopedUrls }),
     title: extractTitle(post.text, primary),
     source: post.source,
     postUrl: post.post_url,
@@ -237,7 +263,7 @@ function analyze(rawPost, catalog, settings = {}, now = Date.now()) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { stripInvisible, normalize, ramMentions, parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
+  module.exports = { stripInvisible, normalize, ramMentions, scopeToSize, parseBRL, extractPrices, extractCoupon, pickOfferUrl, extractTitle, matchProducts, analyze };
 }
 
 if (typeof $input !== 'undefined') {
