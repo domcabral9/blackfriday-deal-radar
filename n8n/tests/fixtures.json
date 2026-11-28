@@ -385,8 +385,28 @@
     "expect": { "status": "acima_do_teto" }
   },
   {
-    "name": "TCL QD-Mini LED (sem a palavra QLED) fica de fora",
+    "name": "Real (VRL): TCL C6K QD-Mini LED 65\" entra",
     "post": { "text": "🔥 Smart Tv 65\" TCL C6K QD-Mini LED 4K 120Hz | De R$4.799,00 Por R$ 3.299,00" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 3299 }
+  },
+  {
+    "name": "Real (VRL): TCL Q7D Pro SQD-Mini LED 65\" entra",
+    "post": { "text": "(Lançamento 2026) Smart Tv TCL 65\" Q7D Pro SQD-Mini Led 4k 144Hz | De R$5.599,00 Por R$ 4.919,00" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 4919 }
+  },
+  {
+    "name": "Real (Rodrigo): TCL Qd-Mini Led com tamanho só no código",
+    "post": { "text": "📺 Smart Tv Tcl 65 Polegadas Qd-Mini Led 4K C6k WiFi Bluetooth Google Tv 4 Hdmi 144Hz Hdr10+ 65C6k\n\n💰 R$ 3.099" },
+    "expect": { "status": "alerta", "product": "tv-qled-55-65", "price": 3099 }
+  },
+  {
+    "name": "Real: monitor TCL QD-Mini LED continua fora",
+    "post": { "text": "🔥 Monitor Gamer TCL 25\" QD-Mini LED FHD (300Hz/1ms) 25G64 | De R$1.499,90 Por R$ 890,19 (no Pix)" },
+    "expect": { "status": "sem_produto" }
+  },
+  {
+    "name": "TCL QD-Mini LED de 75\" fica de fora",
+    "post": { "text": "(Lançamento 2026) Smart Tv TCL 75\" A400M QD-Mini LED 4K 120Hz | De R$7.599,90 Por R$ 5.549,00" },
     "expect": { "status": "sem_produto" }
   },
   {

@@ -55,10 +55,12 @@ const catalog = [
   // vistas nos canais: o texto precisa dizer "QLED" (pega Hi-QLED da Hisense e
   // Neo QLED da Samsung) e "TV"; monitores TCL "Qled Mini Led" ficam de fora.
   // QNED da LG não bate ("qned" != "qled") e tem entrada própria.
+  // 28/11: inclui a família QD-Mini LED da TCL (C6K, C7K, A400M) e
+  // SQD-Mini LED (C7L, Q7D Pro), que usam pontos quânticos sem escrever "QLED".
   {
     id: 'tv-qled-55-65',
-    label: 'Smart TV QLED 55" ou 65"',
-    model: 'qled',
+    label: 'Smart TV QLED / QD-Mini LED 55" ou 65"',
+    model: 'qled|s?qd\\s?mini\\s?led',
     requireAll: ['(?<![a-z])tv(?![a-z])|televis'],
     excludeAny: ['monitor'],
     size: [55, 65],
